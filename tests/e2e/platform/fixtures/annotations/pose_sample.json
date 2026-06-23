@@ -1,0 +1,141 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          150,
+          80
+        ],
+        [
+          150,
+          140
+        ],
+        [
+          130,
+          180
+        ],
+        [
+          170,
+          180
+        ],
+        [
+          110,
+          240
+        ],
+        [
+          130,
+          300
+        ],
+        [
+          190,
+          240
+        ],
+        [
+          210,
+          280
+        ],
+        [
+          150,
+          200
+        ],
+        [
+          130,
+          260
+        ],
+        [
+          110,
+          340
+        ],
+        [
+          170,
+          260
+        ],
+        [
+          190,
+          360
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "person",
+      "score": null,
+      "points": [
+        [
+          450,
+          100
+        ],
+        [
+          450,
+          160
+        ],
+        [
+          430,
+          200
+        ],
+        [
+          470,
+          200
+        ],
+        [
+          410,
+          260
+        ],
+        [
+          440,
+          320
+        ],
+        [
+          490,
+          260
+        ],
+        [
+          510,
+          300
+        ],
+        [
+          450,
+          220
+        ],
+        [
+          430,
+          280
+        ],
+        [
+          410,
+          360
+        ],
+        [
+          470,
+          280
+        ],
+        [
+          490,
+          370
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "pose_sample.png",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640
+}

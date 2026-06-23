@@ -1,0 +1,110 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "X-AnyLabeling 新人工程导览",
+  "description": "面向新加入开发者的 X-AnyLabeling 代码库导览。从项目入口出发，逐层深入：启动 → 双窗口 → DDD 平台层 → 标注核心 → AI 推理 → 训练管线 → 后台作业 → 大图切分。完成后将理解整个离线桌面深度学习标注平台的架构与调用链。",
+  "ref": "main",
+  "steps": [
+    {
+      "directory": "anylabeling",
+      "title": "1. 项目总览 — 源码根目录",
+      "description": "X-AnyLabeling 是 Windows/Linux/macOS 离线单机桌面深度学习标注平台。504 个 Python 源文件。核心目录：app.py (入口), platform/ (DDD 平台层), services/ (AI 服务层), views/ (PyQt6 GUI 层)。【注意】这是一个纯离线应用，无数据库、无云服务。"
+    },
+    {
+      "file": "pyproject.toml",
+      "line": 139,
+      "title": "2. CLI 入口注册",
+      "description": "项目通过 setuptools 注册 CLI 入口：xanylabeling 命令指向 anylabeling.app:main。安装方式：pip install -e \".[cpu,dev]\" (CPU) 或 pip install -e \".[gpu,dev]\" (CUDA 12.x)。核心依赖：PyQt6 (GUI), onnxruntime (推理), opencv (图像), pillow (PIL), shapely (几何)。"
+    },
+    {
+      "file": "anylabeling/app.py",
+      "line": 47,
+      "title": "3. 启动入口 — main() 函数",
+      "description": "整个应用的唯一入口。15 步启动序列：(1) PyInstaller 兼容 (2) 环境固化：MKL/OMP 线程=1 (3) 修复 sys.path 防止 platform 模块遮蔽 stdlib (4) argparse 解析 6 个子命令 (5) 3 层配置合并：defaults → ~/.xanylabelingrc → CLI (6) 延迟导入 GUI 模块 (7) QApplication 创建 (8) 主题初始化 (9) 模式分支：--platform → WorkbenchWindow，否则 → MainWindow。【关键】train-worker 子命令启动独立训练进程，不启动 GUI。"
+    },
+    {
+      "file": "anylabeling/views/mainwindow.py",
+      "line": 22,
+      "title": "4. 双窗口模式 (1/2) — MainWindow 传统标注模式",
+      "description": "传统标注中心窗口。创建 LabelingWrapper → LabelingWidget 作为中央控件。适用于快速打开单张/多张图像进行标注。closeEvent 保存窗口几何到 QSettings (WSL 除外)。【对比】MainWindow 以标注为中心；WorkbenchWindow 以项目流水线为中心。"
+    },
+    {
+      "file": "anylabeling/views/platform/workbench_window.py",
+      "line": 93,
+      "title": "5. 双窗口模式 (2/2) — WorkbenchWindow V4 平台模式",
+      "description": "V4 平台工作台，9 页流水线：ProjectHome → Import → Config → Label → Preprocess → Train → Evaluate → Export → Models。通过 --platform 标志启动。使用 ProjectSession 管理所有服务生命周期。Shell 组件：AppBar (顶栏), PrimaryNavigation (5 域左侧导航), SubNav, PageHeader, StatusBar, ErrorBanner, TaskCenterDrawer。【当前推荐】新功能开发优先使用此模式。"
+    },
+    {
+      "directory": "anylabeling/platform",
+      "title": "6. 平台 DDD 分层架构",
+      "description": "platform/ 是整个项目最核心的架构层，采用领域驱动设计 (DDD) 四层：domain/ (14 个 frozen dataclass — Asset, Annotation, Tile, TaskSpec...), application/ (18 个服务类 — TrainingService, ExportService, ImportService...), infrastructure/ (ImageReader, ProcessJobRunner, AtomicWriter...), adapters/ (AlgorithmProvider ABC + UltralyticsProvider + 6 个能力适配器), tiling/ (TilePlanner + 5 个标签分割器), workers/ (JobRequest/JobEvent/JobState 协议)。分层依赖：adapters → application → domain；infrastructure → domain。"
+    },
+    {
+      "file": "anylabeling/platform/application/project_session.py",
+      "line": 27,
+      "title": "7. 项目生命周期 — ProjectSession",
+      "description": "ProjectSession 是 V4 平台的核心编排器。open_project(path) 初始化：JobService, WorkflowState, 以及所有应用服务 (AssetRepository, ImportService, TrainingService, EvaluationService, ExportService, InferenceService, DatasetBuildService, ModelRegistryService)。WorkflowState 自动跟踪 5 个域的状态 (not_started → ready → in_progress → completed)，训练完成后自动跳转到评估。"
+    },
+    {
+      "file": "anylabeling/views/labeling/label_widget.py",
+      "line": 131,
+      "title": "8. 标注核心 — LabelingWidget 中心控制器",
+      "description": "2000+ 行的中心控制器，是整个标注功能的枢纽。管理：文件导航 (next/prev), 保存/加载 (LabelFile JSON), 形状 CRUD, 撤销/重做, 标签管理 (列表/过滤/快捷键), 自动标注连接 (AutoLabelingWidget), 30+ 对话框编排。【数据流】用户操作 → Canvas 绘制 → Shape 对象 → LabelFile.save() → .json 文件。"
+    },
+    {
+      "file": "anylabeling/views/labeling/widgets/canvas.py",
+      "line": 53,
+      "title": "9. 画布 — Canvas 绘制引擎",
+      "description": "QPainter 绘制的核心画布。支持 10 种形状类型：rectangle, rotation, polygon, line, point, circle, cuboid, quadrilateral, linestrip, brush。两个模式：CREATE (绘制) 和 EDIT (编辑)。信号丰富：zoom_request, new_shape, selection_changed, shape_moved, auto_labeling_marks_updated (触发 AI 推理), edit_label_requested 等。缩放/平移通过 Camera2D + CoordinateMap 实现。"
+    },
+    {
+      "file": "anylabeling/services/auto_labeling/model_manager.py",
+      "line": 35,
+      "title": "10. AI 推理 — ModelManager 模型管理器",
+      "description": "中央模型注册与推理管理器。11 个 pyqtSignal 用于异步通信。模型加载 (load_model, line 293)：QThread → 87 分支 if-elif 链按 type 字符串 (如 'yolov5', 'segment_anything') 分发。推理执行 (predict_shapes_threading, line 2297)：获取线程锁 → QThread → Model.predict_shapes() → ONNX 推理 → AutoLabelingResult → 信号发射。【注意】无线程池，每次调用创建临时 QThread。并发通过 threading.Lock 门控，同时只允许一个推理。"
+    },
+    {
+      "file": "anylabeling/services/auto_labeling/model.py",
+      "line": 73,
+      "title": "11. AI 模型基类 — Model 抽象",
+      "description": "所有 87+ 种模型的抽象基类 (QObject)。核心方法：predict_shapes(image, filename) → AutoLabelingResult (抽象), unload() (抽象, 释放 ONNX 会话)。内置 get_model_abs_path() 处理模型下载/缓存/验证：URL 下载 → 本地缓存 → ONNX 校验 (onnx.checker) → 损坏自动重新下载 → ModelScope/GitHub 镜像支持。Meta 内部类声明 required_config_names, widgets, output_modes。"
+    },
+    {
+      "directory": "anylabeling/services/auto_training",
+      "title": "12. 训练管线 — Ultralytics YOLO",
+      "description": "目前唯一支持的训练框架。两条路径：(A) 历史遗留：views/training/ultralytics_dialog.py → services/auto_training/ultralytics/trainer.py → subprocess.Popen。子进程通过 stdout 前缀 __XANYLABELING_TRAIN_EVENT__= 的 JSON 行通信。(B) V4 平台：platform/adapters/ultralytics/ (6 个适配器：Train/Val/Export/Inference/Dataset/RunParser) → TrainingService → JobService → ProcessJobRunner。支持 5 种任务：Classify/Detect/OBB/Segment/Pose。"
+    },
+    {
+      "file": "anylabeling/platform/workers/protocol.py",
+      "line": 25,
+      "title": "13. 后台作业 — JobState 状态机",
+      "description": "7 状态作业机：QUEUED → STARTING → RUNNING → COMPLETED|FAILED，可从 RUNNING → CANCELLING → CANCELLED。JobRequest (作业请求), JobEvent (事件日志, JSONL 格式), CancellationToken (stop.flag 合作取消)。持久化布局：jobs/{job_id}/ 下有 request.json, state.json (原子 tmp→replace), events.jsonl, stdout.log, stderr.log, stop.flag。"
+    },
+    {
+      "file": "anylabeling/platform/infrastructure/process_job_runner.py",
+      "line": 86,
+      "title": "14. 子进程执行 — ProcessJobRunner",
+      "description": "所有长耗时操作 (训练/评估/导出) 通过此类在独立子进程中运行。创建作业目录 → 写入 request.json → subprocess.Popen → 状态推进。取消：写入 stop.flag → 等待 2s → 超时则 taskkill /F /T /PID (Windows) 或 os.killpg(SIGKILL) (POSIX)。stdout/stderr 重定向到日志文件。退出时清理进程树。"
+    },
+    {
+      "file": "anylabeling/platform/tiling/tile_planner.py",
+      "line": 9,
+      "title": "15. 大图切分 — TilePlanner",
+      "description": "规则网格切分策略。plan(asset, tile_plan) → 计算 stride = tile_size - overlap → 行优先遍历 → 生成 TileRecord 列表。两种边缘模式：crop (截断) 和 pad (保持大小, valid_width/height 标记真实像素)。搭配 TileMaterializer (读区域 → cv2.imwrite PNG) 和 5 个标签分割器 (HBB/OBB/Polygon/Pose/Classify) 完成离线数据集构建。坐标转换：L0 全图坐标 → 切片局部 = 减去 (tile.x0, tile.y0)。"
+    },
+    {
+      "file": "anylabeling/platform/infrastructure/image_reader.py",
+      "line": 21,
+      "title": "16. 统一图像 I/O — ImageReader",
+      "description": "所有图像文件读取的统一入口。静态方法，自动后端路由：read() (PIL→Qt→OpenCV), read_region() (Qt ROI → 回退完整读取), metadata() (Qt→PIL→OpenCV, 零像素解码), read_pages() (多页 TIFF)。配合 LargeImageSource 协议 (FileImageSource/QtImageSource/TiffImageSource/MemoryImageSource) 实现图像源抽象。【注意】QtImageSource 每次 read_region() 创建新 QImageReader，对大图切片访问有性能影响。"
+    },
+    {
+      "directory": "docs/CODEMAPS",
+      "title": "17. 下一步 — Codemap 文档",
+      "description": "11 个 codemap 文件提供各子系统详细文档。推荐阅读顺序：architecture → startup-and-lifecycle → dependencies → ui → annotation → inference → training → model-export → dataset → large-image → task-execution。每个 codemap 包含真实文件路径、关键类/函数、数据流图、实现状态标注 (✅已实现 / ⚠️部分 / ❌未实现 / 🗑️遗留)。"
+    },
+    {
+      "title": "18. 你可以做什么了",
+      "description": "完成本导览后：可以追踪从 CLI 启动到 GUI 渲染的完整调用链；理解双窗口模式的适用场景；在 platform/ 四层 DDD 架构中找到正确的代码位置；区分 87+ 种 AI 模型的注册和推理机制；理解训练/导出的子进程隔离模型；掌握大图切分的离线数据集构建流程。修改代码前建议先阅读对应子系统的 codemap。"
+    }
+  ]
+}

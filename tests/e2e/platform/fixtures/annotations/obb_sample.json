@@ -1,0 +1,69 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "label": "rotated_defect",
+      "score": null,
+      "points": [
+        [
+          83.03847577293368,
+          145.98076211353316
+        ],
+        [
+          186.96152422706632,
+          205.98076211353316
+        ],
+        [
+          216.96152422706632,
+          154.01923788646684
+        ],
+        [
+          113.03847577293368,
+          94.01923788646684
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "rotated_defect",
+      "score": null,
+      "points": [
+        [
+          439.85577182721795,
+          385.8948595820016
+        ],
+        [
+          533.8250339058088,
+          351.69284524943475
+        ],
+        [
+          520.144228172782,
+          314.1051404179984
+        ],
+        [
+          426.1749660941912,
+          348.30715475056525
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "obb_sample.png",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640
+}

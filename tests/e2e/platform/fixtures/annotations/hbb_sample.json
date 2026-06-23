@@ -1,0 +1,98 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "label": "defect",
+      "score": null,
+      "points": [
+        [
+          50,
+          50
+        ],
+        [
+          150,
+          50
+        ],
+        [
+          150,
+          120
+        ],
+        [
+          50,
+          120
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "defect",
+      "score": null,
+      "points": [
+        [
+          200,
+          180
+        ],
+        [
+          350,
+          180
+        ],
+        [
+          350,
+          280
+        ],
+        [
+          200,
+          280
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "defect",
+      "score": null,
+      "points": [
+        [
+          400,
+          100
+        ],
+        [
+          580,
+          100
+        ],
+        [
+          580,
+          400
+        ],
+        [
+          400,
+          400
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "hbb_sample.png",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640
+}

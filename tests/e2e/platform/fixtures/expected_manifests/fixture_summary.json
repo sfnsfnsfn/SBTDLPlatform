@@ -1,0 +1,62 @@
+{
+  "generator": "create_platform_fixtures.py",
+  "seed": 42,
+  "fixtures": [
+    {
+      "name": "classify_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\classify_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\classify_sample.json",
+      "dimensions": "640x480",
+      "shapes_count": 0,
+      "file_size_mb": 0.0064144134521484375
+    },
+    {
+      "name": "hbb_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\hbb_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\hbb_sample.json",
+      "dimensions": "640x480",
+      "shapes_count": 3,
+      "file_size_mb": 0.004683494567871094
+    },
+    {
+      "name": "obb_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\obb_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\obb_sample.json",
+      "dimensions": "640x480",
+      "shapes_count": 2,
+      "file_size_mb": 0.0035696029663085938
+    },
+    {
+      "name": "polygon_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\polygon_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\polygon_sample.json",
+      "dimensions": "640x480",
+      "shapes_count": 2,
+      "file_size_mb": 0.00484466552734375
+    },
+    {
+      "name": "pose_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\pose_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\pose_sample.json",
+      "dimensions": "640x480",
+      "shapes_count": 2,
+      "file_size_mb": 0.008521080017089844
+    },
+    {
+      "name": "empty_background",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\empty_background.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\empty_background.json",
+      "dimensions": "640x480",
+      "shapes_count": 0,
+      "file_size_mb": 0.0021924972534179688
+    },
+    {
+      "name": "ci_large_sample",
+      "image": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\images\\ci_large_sample.png",
+      "json": "D:\\code\\X-AnyLabeling\\tests\\e2e\\platform\\fixtures\\annotations\\ci_large_sample.json",
+      "dimensions": "8192x8192",
+      "shapes_count": 3,
+      "file_size_mb": 0.7184906005859375
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "version": "4.0.0",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "test_rect",
+      "points": [
+        [
+          100.0,
+          100.0
+        ],
+        [
+          300.0,
+          250.0
+        ]
+      ],
+      "group_id": null,
+      "description": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {}
+    }
+  ],
+  "imagePath": "test_grid_800x600.png",
+  "imageData": null,
+  "imageHeight": 600,
+  "imageWidth": 800
+}

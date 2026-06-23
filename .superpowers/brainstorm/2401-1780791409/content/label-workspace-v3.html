@@ -1,0 +1,175 @@
+<h2>LabelWorkspace v3 — 原标注组件零改动，平台层包装</h2>
+<p class="subtitle">核心原则：原有 Canvas / Camera2D / Shape / LabelingWidget 一行不改</p>
+
+<div class="section">
+  <h3>分层架构：不改动 vs 新增的明确边界</h3>
+  <div class="mockup">
+    <div class="mockup-header">代码分层 — 绿色=不改动(原有代码) | 蓝色=新增(平台层)</div>
+    <div class="mockup-body">
+      <pre style="background:#f8f9fa;padding:8px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.8">
+
+┌─ <span style="background:#d4edda;padding:2px 6px;border-radius:2px">原有: anylabeling/views/labeling/</span> ────────────────────────────────────────────┐
+│                                                                                    │
+│  <b>LabelingWidget</b>  ← 完整的标注主窗口，所有交互逻辑在此                              │
+│   ├─ <b>Canvas</b>         ← 画布：zoom (滚轮/Ctrl+滚轮)、pan (中键拖拽)、fit_to_window   │
+│   │   ├─ Camera2D      ← HALCON 风格相机：max_zoom=1000x, zoom_at_view_point       │
+│   │   ├─ Shape          ← 形状：polygon 跟随鼠标实时预览线段/顶点                       │
+│   │   ├─ 顶点编辑        ← 拖拽顶点、框选、旋转、Delete删除、Ctrl+Z Undo                │
+│   │   ├─ 右键菜单        ← 删除标注、编辑标签、复制粘贴                                  │
+│   │   └─ 自动标注        ← SAM、YOLO 等模型辅助标注                                    │
+│   ├─ <b>ToolBar</b>        ← 工具栏：矩形/多边形/OBB/关键点/线条/掩码/Brush/Cuboid       │
+│   ├─ <b>LabelFile</b>      ← 文件读写：X-AnyLabeling JSON 格式                          │
+│   ├─ <b>LabelDialog</b>    ← 标签选择/编辑对话框                                        │
+│   └─ <b>FileDock</b>       ← 文件列表面板（标注软件自带的文件切换）                         │
+│                                                                                    │
+│   <span style="color:#28a745">✅ 这些代码 <b>一行都不改</b>，完整保留所有原有交互行为</span>                     │
+└────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ <span style="background:#cce5ff;padding:2px 6px;border-radius:2px">新增: anylabeling/views/platform/label_workspace.py</span> ─────────────────────┐
+│                                                                                    │
+│  <b>LabelWorkspace</b> (QWidget)  ← 平台原生页面，嵌入 WorkbenchWindow                │
+│   ├─ <b>AssetListPanel</b>     ← 资产列表（替换原 FileDock，从项目 assets/ 目录加载）     │
+│   ├─ [LabelingWidget 嵌入]  ← 原封不动嵌入，传入 project_context                      │
+│   └─ <b>InspectorPanel</b>     ← 属性面板（复用 WorkbenchWindow 已有的右侧检查器）        │
+│                                                                                    │
+│   <span style="color:#007bff">🆕 这些是 <b>新增代码</b>，只做包装和桥接，不侵入原有逻辑</span>                  │
+└────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ <span style="background:#cce5ff;padding:2px 6px;border-radius:2px">新增: anylabeling/platform/application/annotation_adapter.py</span> ────────────┐
+│                                                                                    │
+│  <b>AnnotationAdapter</b>  ← 薄桥接层，连接新旧两个世界                               │
+│   ├─ to_platform_doc(shapes) → AnnotationDocument                                  │
+│   ├─ from_platform_doc(doc) → list[Shape]                                          │
+│   └─ task_family_to_shape_types(family) → list[str]  ← 任务驱动工具筛选              │
+│                                                                                    │
+│   <span style="color:#007bff">🆕 薄层，不超过 150 行</span>                                            │
+└────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ <span style="background:#cce5ff;padding:2px 6px;border-radius:2px">改动: anylabeling/views/platform/workbench_window.py</span> ───────────────────┐
+│                                                                                    │
+│  _create_pages() 中新增:                                                            │
+│    self._label_workspace = LabelWorkspace()                                         │
+│    self._pages.insertWidget(LABEL, self._label_workspace)                           │
+│                                                                                    │
+│  set_project() 中新增:                                                              │
+│    self._label_workspace.set_project_context(task_spec, assets_dir, ann_dir)       │
+│                                                                                    │
+│   <span style="color:#ffc107">⚠️ 少量修改，仅添加 LabelWorkspace 的创建和初始化</span>                        │
+└────────────────────────────────────────────────────────────────────────────────────┘
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>原有 Canvas 交互 — 完整保留清单</h3>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="mockup" style="flex:1;min-width:200px">
+      <div class="mockup-header">🔍 图像缩放</div>
+      <div class="mockup-body" style="font-size:12px;line-height:1.8">
+        ✅ 滚轮缩放（以鼠标位置为中心）<br>
+        ✅ Ctrl+滚轮 精细缩放<br>
+        ✅ 最大 1000x 放大<br>
+        ✅ fit_to_window 自适应窗口<br>
+        ✅ fit_width 适应宽度<br>
+        ✅ HALCON Camera2D 坐标系
+      </div>
+    </div>
+    <div class="mockup" style="flex:1;min-width:200px">
+      <div class="mockup-header">✋ 图像平移</div>
+      <div class="mockup-body" style="font-size:12px;line-height:1.8">
+        ✅ 中键拖拽平移<br>
+        ✅ 空格+左键拖拽平移<br>
+        ✅ 平滑惯性滚动<br>
+        ✅ 边界约束
+      </div>
+    </div>
+    <div class="mockup" style="flex:1;min-width:200px">
+      <div class="mockup-header">🎯 标注交互</div>
+      <div class="mockup-body" style="font-size:12px;line-height:1.8">
+        ✅ Polygon 跟随鼠标实时预览<br>
+        ✅ 顶点吸附/高亮<br>
+        ✅ 拖拽顶点修改形状<br>
+        ✅ 选中高亮（多选）<br>
+        ✅ 右键菜单<br>
+        ✅ Ctrl+Z / Ctrl+Y Undo/Redo
+      </div>
+    </div>
+    <div class="mockup" style="flex:1;min-width:200px">
+      <div class="mockup-header">🤖 自动标注</div>
+      <div class="mockup-body" style="font-size:12px;line-height:1.8">
+        ✅ SAM 分割提示<br>
+        ✅ YOLO 检测辅助<br>
+        ✅ 自动解码标记<br>
+        ✅ 模型下拉选择器
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>任务驱动工具筛选 — 实现方式</h3>
+  <div class="mockup">
+    <div class="mockup-header">不改 ToolBar 内部代码，通过设置 create_mode 白名单实现</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:16px;font-size:12px">
+        <div style="flex:1">
+          <div style="font-weight:bold;margin-bottom:8px">detection_hbb 项目打开时：</div>
+          <div style="background:#2d2d2d;color:white;padding:8px;border-radius:4px;font-size:11px;display:flex;gap:6px;flex-wrap:wrap">
+            <span style="background:#4a6;padding:3px 8px;border-radius:3px">📦 矩形</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">🔷 多边形</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">↗️ 旋转框</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">📍 关键点</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">📏 线条</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">🖌️ 掩码</span>
+          </div>
+          <div style="margin-top:6px;color:#666;font-size:10px">
+            Canvas._create_mode 锁定为 "rectangle"<br>
+            其他工具按钮 setVisible(False)
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:bold;margin-bottom:8px">instance_segmentation 项目打开时：</div>
+          <div style="background:#2d2d2d;color:white;padding:8px;border-radius:4px;font-size:11px;display:flex;gap:6px;flex-wrap:wrap">
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">📦 矩形</span>
+            <span style="background:#4a6;padding:3px 8px;border-radius:3px">🔷 多边形</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">↗️ 旋转框</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">📍 关键点</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">📏 线条</span>
+            <span style="color:#666;padding:3px 8px;text-decoration:line-through">🖌️ 掩码</span>
+          </div>
+          <div style="margin-top:6px;color:#666;font-size:10px">
+            Canvas._create_mode 锁定为 "polygon"<br>
+            其他工具按钮 setVisible(False)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>✅ 保留了什么（一行不改）</h4>
+      <ul>
+        <li>Canvas 全部 2400+ 行代码</li>
+        <li>Camera2D 缩放系统（1000x max, HALCON 坐标系）</li>
+        <li>Shape 所有交互（顶点拖拽、polygon 跟随鼠标、吸附）</li>
+        <li>LabelingWidget 工具栏、文件管理、自动标注</li>
+        <li>Undo/Redo、快捷键、右键菜单</li>
+        <li>LabelDialog 标签选择对话框</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>🆕 新增了什么</h4>
+      <ul>
+        <li>LabelWorkspace（~300行 Qt Widget）</li>
+        <li>AssetListPanel 资产列表（平台项目感知）</li>
+        <li>AnnotationAdapter（~150行桥接层）</li>
+        <li>WorkbenchWindow 中 3 处新增调用</li>
+        <li>Task Family → create_mode 映射表</li>
+      </ul>
+    </div>
+  </div>
+</div>

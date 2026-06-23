@@ -1,0 +1,93 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "label": "irregular_defect",
+      "score": null,
+      "points": [
+        [
+          80,
+          60
+        ],
+        [
+          160,
+          40
+        ],
+        [
+          200,
+          100
+        ],
+        [
+          180,
+          160
+        ],
+        [
+          120,
+          190
+        ],
+        [
+          60,
+          150
+        ],
+        [
+          40,
+          100
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "polygon",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "irregular_defect",
+      "score": null,
+      "points": [
+        [
+          400,
+          300
+        ],
+        [
+          480,
+          260
+        ],
+        [
+          550,
+          310
+        ],
+        [
+          580,
+          380
+        ],
+        [
+          520,
+          440
+        ],
+        [
+          440,
+          450
+        ],
+        [
+          380,
+          400
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "polygon",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "polygon_sample.png",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640
+}

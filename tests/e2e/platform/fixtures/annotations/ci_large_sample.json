@@ -1,0 +1,98 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {},
+  "checked": false,
+  "shapes": [
+    {
+      "label": "large_defect",
+      "score": null,
+      "points": [
+        [
+          100,
+          100
+        ],
+        [
+          500,
+          100
+        ],
+        [
+          500,
+          400
+        ],
+        [
+          100,
+          400
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "large_defect",
+      "score": null,
+      "points": [
+        [
+          4000,
+          4000
+        ],
+        [
+          4500,
+          4000
+        ],
+        [
+          4500,
+          4300
+        ],
+        [
+          4000,
+          4300
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "large_defect",
+      "score": null,
+      "points": [
+        [
+          7500,
+          7500
+        ],
+        [
+          8000,
+          7500
+        ],
+        [
+          8000,
+          8000
+        ],
+        [
+          7500,
+          8000
+        ]
+      ],
+      "group_id": null,
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "description": "",
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "ci_large_sample.png",
+  "imageData": null,
+  "imageHeight": 8192,
+  "imageWidth": 8192
+}

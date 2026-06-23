@@ -1,0 +1,28 @@
+{
+  "id": "dataset-scan-service",
+  "title": "V4 平台产品化 + 图像 IO 统一化",
+  "branch": "feat/dataset-scan-service",
+  "status": "in_progress",
+  "strategy": "multi-phase",
+  "currentPhase": "verification",
+  "phases": [
+    {"id": "phase-0", "name": "Freeze & Baseline", "status": "completed"},
+    {"id": "phase-1", "name": "DataWorkspace + Build + Binding", "status": "completed"},
+    {"id": "phase-2a", "name": "Shell Skeleton", "status": "completed"},
+    {"id": "phase-2b", "name": "WorkflowState + ProjectSession + TaskCenter + ErrorBanner", "status": "completed"},
+    {"id": "phase-3", "name": "Import Precheck + Auto-Save/Mask/AI + Tile Preview", "status": "completed"},
+    {"id": "phase-3-supp", "name": "Import-Annotation Supplement", "status": "completed"},
+    {"id": "phase-4", "name": "Train + Evaluate + Validate + Deliver", "status": "completed"},
+    {"id": "unify-image-io", "name": "ImageReader cv2/skimage/PIL → ImageReader", "status": "completed"},
+    {"id": "verification", "name": "Codemap + CodeTour + CONTRIBUTING + DESIGN + Plan归档", "status": "in_progress"}
+  ],
+  "stats": {
+    "filesAdded": 276,
+    "filesModified": 31,
+    "filesDeleted": 2,
+    "testFilesAdded": 83,
+    "totalInsertions": 75043
+  },
+  "created": "2026-06-23",
+  "updated": "2026-06-24"
+}

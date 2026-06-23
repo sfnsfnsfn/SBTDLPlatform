@@ -1,0 +1,263 @@
+<h2>LabelWorkspace v2 — 任务驱动的标注工作区</h2>
+<p class="subtitle">完整保留 Canvas 交互 · 按 Task Family 筛选工具 · 标注增删改</p>
+
+<div class="section">
+  <h3>设计原则</h3>
+  <div style="padding:12px;background:#f0fbff;border-left:3px solid #3498db;margin-bottom:16px;font-size:13px;line-height:1.8">
+    <b>1. 不修改 Canvas 内部交互</b> — 保留所有原始行为（跟随鼠标画 polygon、顶点吸附、右键菜单等）<br>
+    <b>2. 任务驱动工具筛选</b> — 根据 TaskSpec.family 控制工具栏可见项，非当前任务标注方式自动隐藏<br>
+    <b>3. 标注增删改</b> — 删除（Delete键/右键菜单）、修改（双击编辑/拖拽顶点）、属性编辑（检查器面板）
+  </div>
+</div>
+
+<div class="section">
+  <h3>Task Family → 标注工具映射</h3>
+  <div class="mockup">
+    <div class="mockup-header">不同任务类型显示的标注工具栏</div>
+    <div class="mockup-body">
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <tr style="background:#f0f0f0">
+          <th style="padding:6px;text-align:left;border:1px solid #ddd">Task Family</th>
+          <th style="padding:6px;text-align:left;border:1px solid #ddd">可用工具</th>
+          <th style="padding:6px;text-align:left;border:1px solid #ddd">geometry_type</th>
+          <th style="padding:6px;text-align:left;border:1px solid #ddd">说明</th>
+        </tr>
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">classification</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">🏷️ 图像分类</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px;color:#666">(image_labels)</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">仅图像级标签，无形状工具</td>
+        </tr>
+        <tr style="background:#fafafa">
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">detection_hbb</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">📦 矩形</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">bbox_xyxy</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">仅水平矩形框</td>
+        </tr>
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">detection_obb</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">↗️ 旋转框</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">obb_polygon</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">有向边界框(4点)</td>
+        </tr>
+        <tr style="background:#fafafa">
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">instance_segmentation</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">🔷 多边形</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">polygon</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">多边形分割标注</td>
+        </tr>
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">pose</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">📍 关键点</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">keypoints</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">人体/物体关键点</td>
+        </tr>
+        <tr style="background:#fafafa">
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">semantic_segmentation</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">🔷 多边形</button>
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">🖌️ 掩码</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">polygon / raster_mask</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">语义分割(多边形+掩码)</td>
+        </tr>
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:bold;white-space:nowrap">anomaly</td>
+          <td style="padding:6px;border:1px solid #ddd">
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">📦 矩形</button>
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">🔷 多边形</button>
+          </td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:10px">bbox_xyxy / polygon</td>
+          <td style="padding:6px;border:1px solid #ddd;font-size:11px">异常区域标注</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>标注操作：增删改</h3>
+  <div style="display:flex;gap:12px">
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">➕ 新增标注</div>
+      <div class="mockup-body" style="font-size:12px">
+        <ul style="margin:0;padding-left:16px;line-height:1.8">
+          <li>选择对应工具 → 在画布上绘制</li>
+          <li>检测到 <b>polygon 绘制中</b>时：跟随鼠标显示实时预览线段</li>
+          <li>绘制完成后弹出标签选择对话框</li>
+          <li>新建的 Shape → AnnotationObject(新UUID)</li>
+          <li>自动保存到 annotations/{asset_id}.json</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">🗑️ 删除标注</div>
+      <div class="mockup-body" style="font-size:12px">
+        <ul style="margin:0;padding-left:16px;line-height:1.8">
+          <li><b>快捷键 Delete</b> — 删除选中标注</li>
+          <li><b>右键菜单</b> — "删除标注"</li>
+          <li><b>批量删除</b> — 框选多个 → Delete</li>
+          <li>删除后即时保存（覆盖 JSON）</li>
+          <li>支持 Undo (Ctrl+Z) 恢复</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">✏️ 修改标注</div>
+      <div class="mockup-body" style="font-size:12px">
+        <ul style="margin:0;padding-left:16px;line-height:1.8">
+          <li><b>拖拽顶点</b> — 调整形状</li>
+          <li><b>拖拽整体</b> — 移动标注位置</li>
+          <li><b>双击</b> — 编辑标签类别</li>
+          <li><b>检查器面板</b> — 修改属性</li>
+          <li>修改后即时保存</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>更新后的 LabelWorkspace 完整布局</h3>
+  <div class="mockup">
+    <div class="mockup-header">LabelWorkspace — 以 detection_obb 任务为例</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:0;height:420px;border:1px solid #ddd">
+        <!-- Left: Asset List -->
+        <div style="width:200px;background:#f8f9fa;border-right:1px solid #dee2e6;display:flex;flex-direction:column">
+          <div style="padding:8px;background:#e9ecef;font-weight:bold;font-size:12px;border-bottom:1px solid #dee2e6">
+            📁 资产列表 <span style="font-weight:normal;color:#6c757d">| detection_obb</span>
+          </div>
+          <div style="padding:4px 8px;display:flex;gap:4px">
+            <span style="font-size:10px;padding:2px 6px;background:#e8f5e9;border-radius:8px;color:#2e7d32">✅ 12</span>
+            <span style="font-size:10px;padding:2px 6px;background:#fff3cd;border-radius:8px;color:#f57c00">🔄 3</span>
+            <span style="font-size:10px;padding:2px 6px;background:#f5f5f5;border-radius:8px;color:#9e9e9e">⭕ 8</span>
+          </div>
+          <div style="flex:1;overflow:hidden;font-size:11px">
+            <div style="padding:3px 8px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0">
+              <span>aerial_001.jpg</span><span style="color:#28a745">✅ 5 obj</span>
+            </div>
+            <div style="padding:3px 8px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0;background:#e3f2fd">
+              <span>aerial_002.jpg</span><span style="color:#ffc107">🔄 2 obj</span>
+            </div>
+            <div style="padding:3px 8px;display:flex;justify-content:space-between;border-bottom:1px solid #f0f0f0">
+              <span>aerial_003.png</span><span style="color:#28a745">✅ 12 obj</span>
+            </div>
+          </div>
+          <div style="padding:6px 8px;background:#e9ecef;font-size:10px;color:#6c757d">
+            进度 15/23 (65%) | OBB 检测
+          </div>
+        </div>
+        <!-- Center: Canvas with task-filtered toolbar -->
+        <div style="flex:1;background:#1e1e1e;display:flex;flex-direction:column;position:relative">
+          <!-- Task-aware toolbar -->
+          <div style="padding:6px 8px;background:#2d2d2d;display:flex;gap:6px;align-items:center;border-bottom:1px solid #444">
+            <span style="color:#aaa;font-size:10px;margin-right:4px">Task: detection_obb →</span>
+            <button class="mock-button" style="font-size:10px;padding:3px 8px;background:#4a6;color:white">↗️ 旋转框</button>
+            <!-- Hidden tools for non-obb tasks -->
+            <span style="font-size:9px;color:#666;margin-left:auto">📦矩形 · 🔷多边形 · 📍关键点 · 🏷️分类 → 已隐藏</span>
+            <span style="color:#888;font-size:10px;margin-left:8px">|</span>
+            <span style="color:#aaa;font-size:10px">🗑️ Delete | ↩️ Ctrl+Z</span>
+          </div>
+          <!-- Canvas with a simulated OBB annotation and polygon being drawn -->
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative">
+            <div style="position:relative;width:380px;height:260px;background:linear-gradient(135deg,#3a3a3a,#1a1a1a);border:1px solid #555">
+              <!-- Simulated OBB rotated rectangle -->
+              <div style="position:absolute;top:50px;left:80px;width:200px;height:120px;border:2px solid #4ecdc4;transform:rotate(-15deg);border-radius:1px;box-shadow:0 0 4px rgba(78,205,196,0.5)">
+                <!-- Vertex handles -->
+                <div style="position:absolute;top:-4px;left:-4px;width:8px;height:8px;background:#4ecdc4;border-radius:50%"></div>
+                <div style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#4ecdc4;border-radius:50%"></div>
+                <div style="position:absolute;bottom:-4px;left:-4px;width:8px;height:8px;background:#4ecdc4;border-radius:50%"></div>
+                <div style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#4ecdc4;border-radius:50%"></div>
+                <!-- Label badge -->
+                <div style="position:absolute;top:-18px;left:0;background:#4ecdc4;color:white;font-size:9px;padding:1px 5px;border-radius:2px">ship</div>
+              </div>
+              <!-- Polygon being drawn (following mouse) -->
+              <div style="position:absolute;bottom:30px;right:40px">
+                <div style="color:#f39c12;font-size:9px;margin-bottom:2px">🖱️ 绘制中...</div>
+                <svg width="100" height="60" style="position:absolute;top:12px;left:0">
+                  <polyline points="0,50 20,20 55,10 90,35 100,50" stroke="#f39c12" stroke-width="1.5" fill="none" stroke-dasharray="3,3"/>
+                  <circle cx="100" cy="50" r="2" fill="#f39c12"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <!-- Status bar -->
+          <div style="padding:4px 8px;background:#2d2d2d;font-size:9px;color:#888;display:flex;gap:12px;border-top:1px solid #444">
+            <span>aerial_002.jpg (1024×768)</span>
+            <span>|</span>
+            <span>标签: [ship, car, plane, building] (4 classes)</span>
+            <span>|</span>
+            <span>标注数: 2</span>
+            <span style="margin-left:auto">detection_obb · obb_polygon</span>
+          </div>
+        </div>
+        <!-- Right: Inspector -->
+        <div style="width:220px;background:#f8f9fa;border-left:1px solid #dee2e6;display:flex;flex-direction:column">
+          <div style="padding:8px;background:#e9ecef;font-weight:bold;font-size:12px;border-bottom:1px solid #dee2e6">
+            🔍 属性
+          </div>
+          <div style="padding:8px;font-size:11px">
+            <div class="label">标签</div>
+            <select style="width:100%;padding:3px;margin-bottom:10px;font-size:11px;border:1px solid #ccc;border-radius:3px">
+              <option>ship</option>
+              <option>car</option>
+              <option>plane</option>
+              <option selected>building</option>
+            </select>
+            <div class="label">类型</div>
+            <div style="padding:3px 6px;margin-bottom:10px;background:white;border:1px solid #ddd;border-radius:3px;font-size:10px">obb_polygon</div>
+            <div class="label">顶点</div>
+            <div style="padding:3px 6px;margin-bottom:10px;background:white;border:1px solid #ddd;border-radius:3px;font-size:10px;color:#555">
+              1:(120,85) 2:(320,80)<br>3:(330,210) 4:(115,215)
+            </div>
+            <div class="label">操作</div>
+            <div style="display:flex;gap:4px">
+              <button class="mock-button" style="font-size:10px;padding:2px 8px;background:#e74c3c;color:white">🗑️ 删除</button>
+              <button class="mock-button" style="font-size:10px;padding:2px 8px">✏️ 编辑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>AnnotationAdapter — 桥接层设计</h3>
+  <div class="mockup">
+    <div class="mockup-header">Shape ↔ AnnotationObject 双向转换，不改动 Canvas 内部</div>
+    <div class="mockup-body">
+      <pre style="background:#f8f9fa;padding:10px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.7">
+<span style="color:#6c757d"># 标注加载流程</span>
+LabelingWidget.loadFile(image_path)
+  → <b>AnnotationAdapter.load(asset_id)</b>
+    → AnnotationService.load_annotations(ann_path, w, h) → AnnotationDocument
+    → <b>AnnotationDocument.objects → LabelingWidget.shapes</b>  <span style="color:#6c757d"># 只注入形状数据</span>
+
+<span style="color:#6c757d"># 标注保存流程（形状变更时自动触发）</span>
+LabelingWidget.shapes_changed
+  → <b>AnnotationAdapter.save(asset_id, shapes)</b>
+    → shapes → AnnotationObject 列表 → AnnotationDocument
+    → AnnotationService.save_annotations(doc, ann_path)
+
+<span style="color:#6c757d"># 任务驱动工具筛选</span>
+LabelWorkspace.set_task_spec(task_spec)
+  → 根据 task_spec.family 计算 <b>allowed_geometry_types</b>
+  → LabelingWidget.set_allowed_shape_types(allowed_types)
+  → Canvas 工具栏根据 allowed_types 显示/隐藏按钮
+  → Canvas._create_mode 限制为允许的类型
+        </pre>
+    </div>
+  </div>
+</div>

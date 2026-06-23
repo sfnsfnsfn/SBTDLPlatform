@@ -1,0 +1,13 @@
+{
+  "version": "4.0.0-beta.7",
+  "flags": {
+    "empty": true,
+    "note": "background test image"
+  },
+  "checked": false,
+  "shapes": [],
+  "imagePath": "empty_background.png",
+  "imageData": null,
+  "imageHeight": 480,
+  "imageWidth": 640
+}

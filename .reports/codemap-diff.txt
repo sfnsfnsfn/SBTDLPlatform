@@ -1,0 +1,59 @@
+Codemap Analysis Report — 2026-06-22
+======================================
+
+Status: MAJOR UPDATE (previous: 2026-06-07, ~40-50% change rate)
+
+Files Updated (12 existing):
+  ~ docs/CODEMAPS/architecture.md   — 9-step pipeline (was 8), all steps connected
+  ~ docs/CODEMAPS/project-management.md — IMPORT+CONFIG now connected, MODELS step added
+  ~ docs/CODEMAPS/annotation.md     — COCO/VOC/YOLO codecs, auto-save, mask brush
+  ~ docs/CODEMAPS/dataset.md        — Leakage detection, build history, ManifestStore
+  ~ docs/CODEMAPS/training.md       — TrainingReadiness, TrainReadinessWidget, auto-chain
+  ~ docs/CODEMAPS/model-export.md   — ModelLibrary, ExportConfig, auto-register
+  ~ docs/CODEMAPS/inference.md      — InferenceViewerWidget added
+  ~ docs/CODEMAPS/large-image.md    — (minor updates)
+  ~ docs/CODEMAPS/task-execution.md — WorkflowState machine added
+  ~ docs/CODEMAPS/startup-and-lifecycle.md — (unchanged)
+  ~ docs/CODEMAPS/ui.md             — 9-step layout, shell components, widgets table
+  ~ docs/CODEMAPS/dependencies.md   — (unchanged)
+
+Files Added (2 new):
+  + docs/CODEMAPS/import.md         — Import pipeline, AssetRepository, codecs, ImportVM
+  + docs/CODEMAPS/evaluation.md     — EvaluationService, MisclassificationService, gallery
+
+Architecture Changes Detected:
+  - Pipeline expanded: 8 steps → 9 steps (MODELS step added at position 8)
+  - IMPORT step: placeholder → ImportWorkspace + precheck pipeline
+  - CONFIG step: placeholder → TaskConfigurator (dynamic, task-family-aware)
+  - Phase 3a-3c: Import precheck, annotation companion import, COCO/VOC/YOLO codecs
+  - Phase 3b: Auto-save, mask brush, AI suggestions
+  - Phase 3c: Tile preview, build history, ManifestStore, leakage detection
+  - Phase 4: TrainingReadiness, EvalReportWidget, MisclassGallery, ModelLibrary
+  - Phase 4: WorkflowState auto-chain (Train→Eval→Export→Models)
+  - Dead code removed: ImageImportDialog, import_preview
+
+New Dependencies Detected:
+  - None (no new packages added to pyproject.toml)
+
+New Services:
+  + ImportService (837L) — asset import with precheck + annotation companion
+  + AssetRepository (309L) — asset query + filtering
+  + MisclassificationService (206L) — post-eval error analysis
+  + WorkflowState (463L) — cross-step state machine
+
+New Widgets:
+  + AssetFilterBar, AssetListModel, EvalReportWidget, MisclassGallery
+  + ModelLibrary, TilePreviewWidget, TileInspectorPanel, TrainReadinessWidget
+
+New View Models:
+  + DatasetViewModel, ImportViewModel, RunViewModel, TrainValidationVM
+
+Staleness Warnings:
+  - None — all codemaps freshly regenerated.
+
+Stats:
+  - Python files: 474 → 636 (+162)
+  - Test files: ~70 → 110 (+40)
+  - Codemap files: 12 → 14 (+2)
+  - Platform pipeline steps: 8 → 9 (+1)
+  - Placeholder steps: 2 → 0 (-2)
