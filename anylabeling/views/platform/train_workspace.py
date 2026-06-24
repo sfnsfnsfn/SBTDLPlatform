@@ -248,6 +248,7 @@ class TrainWorkspace(QtWidgets.QWidget):
         self._active_job_id: str | None = None
         self._run_vm = None
 
+        self._context = None
         self._numeric_inputs: dict[str, QtWidgets.QWidget] = {}
         self._bool_inputs: dict[str, QtWidgets.QCheckBox] = {}
         self._dynamic_param_container: QtWidgets.QWidget | None = None
@@ -305,6 +306,45 @@ class TrainWorkspace(QtWidgets.QWidget):
     def set_dataset_builds(self, dataset_builds: list[DatasetBuild]) -> None:
         self._dataset_builds = dataset_builds
         self._populate_dataset_combo()
+
+    def set_context(self, context) -> None:
+        """Set the ProjectContext and refresh dataset selector from DB.
+
+        When *context* is not None, the dataset combo is populated from
+        ``context.dataset_builds.list_completed()`` so only completed
+        builds are available.  If no completed builds exist the Start
+        button is disabled with an explanatory tooltip.
+
+        When *context* is None the existing manual-population behaviour
+        via ``set_project_context`` / ``set_dataset_builds`` is preserved.
+        """
+        self._context = context
+        if context is not None:
+            self._refresh_dataset_db()
+
+    def _refresh_dataset_db(self) -> None:
+        """Load completed dataset builds from DB and populate the selector.
+
+        Called automatically by ``set_context`` when a non-None context is
+        provided.  Failed, running, and pending builds are excluded because
+        the underlying ``list_completed()`` query only returns rows where
+        ``status = 'completed'``.
+        """
+        records = self._context.dataset_builds.list_completed()
+        self._dataset_builds = records
+        self._populate_dataset_combo()
+
+        if not records:
+            self._btn_start.setEnabled(False)
+            self._btn_start.setToolTip(
+                tr(
+                    "没有可用的已完成数据集构建",
+                    "No completed dataset builds available",
+                )
+            )
+        else:
+            self._btn_start.setToolTip("")
+            self._update_button_states()
 
     def job_service(self) -> JobService | None:
         return self._job_service
@@ -1211,7 +1251,21 @@ class TrainWorkspace(QtWidgets.QWidget):
                 return
 
         has_context = self._job_service is not None
-        self._btn_start.setEnabled(has_context and not is_running)
+        no_builds = (
+            self._context is not None
+            and self._combo_dataset.count() == 0
+        )
+        if no_builds:
+            self._btn_start.setEnabled(False)
+            self._btn_start.setToolTip(
+                tr(
+                    "没有可用的已完成数据集构建",
+                    "No completed dataset builds available",
+                )
+            )
+        else:
+            self._btn_start.setEnabled(has_context and not is_running)
+            self._btn_start.setToolTip("")
         self._btn_stop.setEnabled(is_running)
 
     def closeEvent(self, event: QtCore.QEvent) -> None:  # type: ignore[override]
