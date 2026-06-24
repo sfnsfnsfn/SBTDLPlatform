@@ -221,7 +221,7 @@ class PreprocessWorkspace(QtWidgets.QWidget):
         self._hflip_cb = QtWidgets.QCheckBox(tr("水平翻转", "H-Flip"))
         self._hflip_cb.setEnabled(False)
         self._hflip_cb.setToolTip(tr("（规划中）", "(planned)"))
-        self._hflip_cb.setChecked(True)
+        self._hflip_cb.setChecked(False)
         aug_layout.addWidget(self._hflip_cb)
 
         self._vflip_cb = QtWidgets.QCheckBox(tr("垂直翻转", "V-Flip"))
@@ -232,13 +232,13 @@ class PreprocessWorkspace(QtWidgets.QWidget):
         self._brightness_cb = QtWidgets.QCheckBox(tr("亮度", "Brightness"))
         self._brightness_cb.setEnabled(False)
         self._brightness_cb.setToolTip(tr("（规划中）", "(planned)"))
-        self._brightness_cb.setChecked(True)
+        self._brightness_cb.setChecked(False)
         aug_layout.addWidget(self._brightness_cb)
 
         self._rotate_cb = QtWidgets.QCheckBox(tr("旋转", "Rotate"))
         self._rotate_cb.setEnabled(False)
         self._rotate_cb.setToolTip(tr("（规划中）", "(planned)"))
-        self._rotate_cb.setChecked(True)
+        self._rotate_cb.setChecked(False)
         aug_layout.addWidget(self._rotate_cb)
 
         aug_layout.addStretch()

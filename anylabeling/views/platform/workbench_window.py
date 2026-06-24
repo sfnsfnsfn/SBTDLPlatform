@@ -471,6 +471,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 task_specs=self._pending_task_specs,
                 dataset_builds=self._pending_dataset_builds,
             )
+        self._train_workspace = workspace
         return workspace
 
     def _create_evaluate_workspace(self) -> QtWidgets.QWidget:
@@ -557,12 +558,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 workspace.set_large_images(large_images)
 
             # Set total asset count so Build button enables for normal images
-            if assets_dir.is_dir():
-                total = sum(
-                    1 for p in assets_dir.iterdir()
-                    if p.is_file() and p.suffix.lower() in exts
-                )
-                workspace.set_total_assets(total)
+            total = self._asset_repository.count_assets()
+            workspace.set_total_assets(total)
 
         workspace.build_requested.connect(self._on_preprocess_build_requested)
         return workspace
