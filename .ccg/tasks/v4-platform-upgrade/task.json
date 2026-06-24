@@ -2,9 +2,9 @@
   "id": "v4-platform-upgrade",
   "title": "V4 平台产品化：SQLite 元数据解耦 + 1920x1080 UI + 多Agent并行开发",
   "branch": "main",
-  "status": "in_progress",
+  "status": "completed",
   "strategy": "multi-phase-parallel",
-  "currentPhase": "phase-e",
+  "currentPhase": "complete",
   "prd": ".claude/PRPs/prds/sbtl-platform-v4.prd.md",
   "phases": [
     {
@@ -49,7 +49,7 @@
     {
       "id": "phase-e",
       "name": "E: Service 接入 DB",
-      "status": "pending",
+      "status": "complete",
       "agent": "E1,E2,Lead",
       "parallelGroup": null,
       "dependsOn": [
@@ -59,7 +59,7 @@
     {
       "id": "phase-f1",
       "name": "F1: Workflow/Context",
-      "status": "pending",
+      "status": "complete",
       "agent": "F,Lead",
       "parallelGroup": null,
       "dependsOn": [
@@ -69,7 +69,7 @@
     {
       "id": "phase-f2",
       "name": "F2: UI 接入 DB + 1920 坐标",
-      "status": "pending",
+      "status": "complete",
       "agent": "F",
       "parallelGroup": null,
       "dependsOn": [
@@ -79,7 +79,7 @@
     {
       "id": "phase-g",
       "name": "G: 回归与文档",
-      "status": "pending",
+      "status": "complete",
       "agent": "G",
       "parallelGroup": null,
       "dependsOn": [
