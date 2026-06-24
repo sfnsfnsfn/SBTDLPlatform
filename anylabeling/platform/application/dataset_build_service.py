@@ -201,7 +201,6 @@ class DatasetBuildService:
         )
 
         build_dir = self._project_root / "dataset_builds" / build_id
-        build_dir.mkdir(parents=True, exist_ok=True)
 
         # --- create DB record before any build work (if context available) ---
         if self._context is not None:
@@ -239,6 +238,10 @@ class DatasetBuildService:
                     status="running",
                 )
             )
+
+        # mkdir AFTER DB record creation — avoids orphaned directories
+        # if the DB insert fails
+        build_dir.mkdir(parents=True, exist_ok=True)
 
         try:
             images_dir = build_dir / "images"
@@ -365,22 +368,29 @@ class DatasetBuildService:
             )
             self._write_build_json(build_dir, dataset_build)
 
-            # --- step 8: write _READY marker ---
+            # --- step 8: mark completed in DB first, then write _READY ---
+            if self._context is not None:
+                self._context.dataset_builds.mark_completed(build_id)
+
+            # write _READY sentinel ONLY after DB mark succeeds
             (build_dir / "_READY").write_text(
                 f"build {build_id} completed\n", encoding="utf-8"
             )
-
-            # --- mark completed in DB ---
-            if self._context is not None:
-                self._context.dataset_builds.mark_completed(build_id)
 
             return dataset_build
 
         except Exception as exc:
             if self._context is not None:
-                self._context.dataset_builds.mark_failed(
-                    build_id, error_message=str(exc)
-                )
+                try:
+                    self._context.dataset_builds.mark_failed(
+                        build_id, error_message=str(exc)
+                    )
+                except Exception as db_exc:
+                    logger.error(
+                        "Failed to mark build %s as failed in DB: %s",
+                        build_id,
+                        db_exc,
+                    )
             raise
 
     # ------------------------------------------------------------------

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 def _deploy_tree_items() -> list[tuple[str, str, list | None]]:
@@ -448,7 +451,11 @@ try:  # noqa: C901
             # DB context path
             context = getattr(self, "_context", None)
             if context is not None:
-                ready_models = context.models.list_ready()
+                try:
+                    ready_models = context.models.list_ready()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
                 for model in ready_models:
                     label = f"{model.name} ({model.task_family})"
                     self._run_combo.addItem(label, model.run_id)

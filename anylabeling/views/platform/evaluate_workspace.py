@@ -8,11 +8,14 @@ Phase 3 additions:
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import numpy as np
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 _NO_METRIC_TEXT = tr("未生成", "Not generated")
 
@@ -445,7 +448,11 @@ try:
             # DB context path
             context = getattr(self, "_context", None)
             if context is not None:
-                completed_runs = context.runs.list_completed()
+                try:
+                    completed_runs = context.runs.list_completed()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
                 for run in completed_runs:
                     label = f"{run.id} ({run.task_family}) [{run.status}]"
                     self._run_combo.addItem(label, run.id)

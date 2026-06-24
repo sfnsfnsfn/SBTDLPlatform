@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS dataset_builds (
         )
         return self._row_to_record(row) if row else None
 
+    def list_failed(self) -> list[DatasetBuildRecord]:
+        rows = self._db.query_all(
+            "SELECT * FROM dataset_builds "
+            "WHERE status = 'failed' AND deleted_at IS NULL "
+            "ORDER BY completed_at DESC, ROWID DESC"
+        )
+        return [self._row_to_record(r) for r in rows]
+
     # ------------------------------------------------------------------
     # Commands
     # ------------------------------------------------------------------
@@ -135,13 +143,23 @@ ON CONFLICT(id) DO UPDATE SET
             (now, build_id),
         )
 
-    def mark_completed(self, build_id: str) -> None:
+    def mark_completed(
+        self, build_id: str, manifest_hash: str | None = None
+    ) -> None:
         now = _now()
-        self._db.execute(
-            "UPDATE dataset_builds SET status = 'completed', "
-            "completed_at = ?, updated_at = ? WHERE id = ?",
-            (now, now, build_id),
-        )
+        if manifest_hash is not None:
+            self._db.execute(
+                "UPDATE dataset_builds SET status = 'completed', "
+                "manifest_hash = ?, "
+                "completed_at = ?, updated_at = ? WHERE id = ?",
+                (manifest_hash, now, now, build_id),
+            )
+        else:
+            self._db.execute(
+                "UPDATE dataset_builds SET status = 'completed', "
+                "completed_at = ?, updated_at = ? WHERE id = ?",
+                (now, now, build_id),
+            )
 
     def mark_failed(self, build_id: str, error_message: str) -> None:
         now = _now()

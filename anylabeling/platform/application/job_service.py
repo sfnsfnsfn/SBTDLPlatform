@@ -14,6 +14,7 @@ Architecture constraints:
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from pathlib import Path
@@ -26,10 +27,6 @@ from anylabeling.platform.workers.protocol import (
     JobState,
     TERMINAL_STATES,
 )
-
-# Lazy forward reference for ProjectContext (infrastructure deps may not be
-# installed in the package yet).
-_ProjectContext: Any = None
 
 logger = logging.getLogger(__name__)
 
@@ -94,18 +91,10 @@ class JobService:
             The job ID string (available as ``request.job_id``).
         """
         with self._lock:
-            try:
-                self._runner.start(request, command)
-            except Exception:
-                self._jobs[request.job_id] = request
-                logger.exception(
-                    "Job %s (%s) failed to start", request.job_id, request.job_kind
-                )
-                raise
+            # Step 1: Register in-memory + DB record BEFORE starting
+            # the subprocess, so a DB failure does not leave a zombie.
             self._jobs[request.job_id] = request
-            logger.info("Job %s (%s) started", request.job_id, request.job_kind)
 
-            # DB mirror: create a JobRecord in SQLite
             if self._context is not None:
                 from anylabeling.platform.domain.records import JobRecord
                 record = JobRecord(
@@ -114,13 +103,27 @@ class JobService:
                     state="running",
                     progress=0.0,
                     payload_json=(
-                        str(request.params)
+                        json.dumps(request.params)
                         if request.params
                         else None
                     ),
                 )
                 self._context.jobs.create(record)
 
+            # Step 2: Start the subprocess. If this fails, mark the
+            # DB record as failed so the UI never sees a stuck "running".
+            try:
+                self._runner.start(request, command)
+            except Exception as e:
+                self.mark_job_failed(request.job_id, str(e))
+                logger.exception(
+                    "Job %s (%s) failed to start",
+                    request.job_id,
+                    request.job_kind,
+                )
+                raise
+
+            logger.info("Job %s (%s) started", request.job_id, request.job_kind)
             return request.job_id
 
     # ------------------------------------------------------------------
@@ -136,9 +139,17 @@ class JobService:
         Args:
             job_id: The job identifier.
             progress: A float between 0.0 and 1.0.
+
+        Raises:
+            ValueError: If *progress* is not in [0.0, 1.0].
         """
-        if self._context is not None:
-            self._context.jobs.update_progress(job_id, progress)
+        if not 0.0 <= progress <= 1.0:
+            raise ValueError(
+                f"progress must be in [0.0, 1.0], got {progress}"
+            )
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.update_progress(job_id, progress)
 
     def mark_job_completed(self, job_id: str) -> None:
         """Mark *job_id* as completed in the SQLite database.
@@ -146,8 +157,9 @@ class JobService:
         This is a no-op when *context* was not provided at construction
         time.
         """
-        if self._context is not None:
-            self._context.jobs.mark_completed(job_id)
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.mark_completed(job_id)
 
     def mark_job_failed(self, job_id: str, error_message: str) -> None:
         """Mark *job_id* as failed in the SQLite database.
@@ -159,8 +171,9 @@ class JobService:
             job_id: The job identifier.
             error_message: A human-readable error description.
         """
-        if self._context is not None:
-            self._context.jobs.mark_failed(job_id, error_message)
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.mark_failed(job_id, error_message)
 
     def cancel_job(self, job_id: str) -> None:
         """Cancel a running job.

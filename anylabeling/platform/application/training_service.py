@@ -26,13 +26,6 @@ from anylabeling.platform.domain.run import MetricPoint, Run
 from anylabeling.platform.infrastructure.atomic_writer import AtomicWriter
 from anylabeling.platform.workers.protocol import JobRequest
 
-# Lazy import for ProjectContext (the infrastructure modules it depends on may
-# not be installed in the package yet).  The import is deferred to the methods
-# that use it, so importing training_service does not trigger loading of
-# ProjectContext's dependencies.
-_ProjectContext: Any = None
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -313,12 +306,9 @@ class TrainingService:
         Raises:
             ValueError: If the dataset build is not found or not completed.
         """
-        # 1. Create Run record (run.json on disk)
-        run = self.create_run_record(request)
-
-        # 2. DB mirror: validate build state and create RunRecord in SQLite
+        # 1. DB mirror: validate build state BEFORE creating run.json
+        #    so that a failed validation does not leave an orphan run.json.
         if self._context is not None:
-            from anylabeling.platform.domain.records import RunRecord
             build = self._context.dataset_builds.get(
                 request.dataset_build.id
             )
@@ -331,6 +321,13 @@ class TrainingService:
                     f"Dataset build '{request.dataset_build.id}' is "
                     f"not completed (status={build.status})."
                 )
+
+        # 2. Create Run record (run.json on disk) — only after validation passes
+        run = self.create_run_record(request)
+
+        # 3. Mirror RunRecord in SQLite
+        if self._context is not None:
+            from anylabeling.platform.domain.records import RunRecord
             run_record = RunRecord(
                 id=run.id,
                 dataset_build_id=run.dataset_build_id,
@@ -391,6 +388,11 @@ class TrainingService:
                     run.id,
                     error_message="Failed to start training",
                 )
+            # Keep filesystem run.json in sync with the DB status
+            run_record = self.read_run_record(run.id)
+            if run_record is not None:
+                run_record.status = "failed"
+                self.update_run_record(run_record)
             raise
 
     # ------------------------------------------------------------------

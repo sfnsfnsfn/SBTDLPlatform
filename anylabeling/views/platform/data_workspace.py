@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +389,11 @@ try:
             filesystem-based flow instead.
             """
             if self._context is not None:
-                stats = self._context.assets.stats()
+                try:
+                    stats = self._context.assets.stats()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
                 total = stats.get("total_assets", 0)
                 annotated = stats.get("annotated_count", 0)
                 builds = stats.get("completed_builds", 0)

@@ -897,20 +897,16 @@ class PreprocessWorkspace(QtWidgets.QWidget):
                     "dir": rec.output_path,
                 })
 
-            failed = self._context.db.query_all(
-                "SELECT * FROM dataset_builds "
-                "WHERE status = 'failed' AND deleted_at IS NULL "
-                "ORDER BY completed_at DESC, ROWID DESC"
-            )
-            for row in failed:
+            failed = self._context.dataset_builds.list_failed()
+            for rec in failed:
                 builds.append({
-                    "id": row["id"],
-                    "created_at": row["completed_at"]
-                              or row["created_at"]
+                    "id": rec.id,
+                    "created_at": rec.completed_at
+                              or rec.created_at
                               or "",
                     "status": "failed",
-                    "dir": row["output_path"],
-                    "error_message": row["error_message"] or "",
+                    "dir": rec.output_path,
+                    "error_message": rec.error_message or "",
                 })
         except Exception:
             logger.exception("Failed to load build history from DB")

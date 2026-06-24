@@ -173,8 +173,10 @@ class ProjectDb:
                 which also truncates the WAL file.
                 When False (default), uses ``PRAGMA wal_checkpoint(PASSIVE)``.
         """
-        mode = 1 if truncate else 0
-        self.connection.execute(f"PRAGMA wal_checkpoint({mode})")
+        if truncate:
+            self.connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        else:
+            self.connection.execute("PRAGMA wal_checkpoint(PASSIVE)")
 
     # ------------------------------------------------------------------
     # Context manager support

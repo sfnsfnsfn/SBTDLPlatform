@@ -274,7 +274,7 @@ class ProjectDbBootstrap:
             return []
 
         records: list[AnnotationSummaryRecord] = []
-        for path in sorted(ann_dir.iterdir()):
+        for path in sorted(ann_dir.rglob("*")):
             if not path.is_file():
                 continue
             try:
@@ -543,7 +543,7 @@ def _extract_group(rel_path: Path) -> str | None:
     """
     parts = rel_path.parts
     if len(parts) > 1:
-        return parts[-2]
+        return parts[0]  # top-level group under assets/
     return None
 
 

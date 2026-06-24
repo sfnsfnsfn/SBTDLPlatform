@@ -476,6 +476,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _create_train_workspace(self) -> QtWidgets.QWidget:
         """Create and wire TrainWorkspace."""
         workspace = TrainWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_pending_task_specs") and hasattr(self, "_pending_dataset_builds"):
             workspace.set_project_context(
                 job_service=self._job_service,
@@ -489,6 +491,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _create_evaluate_workspace(self) -> QtWidgets.QWidget:
         """Create and wire EvaluateWorkspace."""
         workspace = EvaluateWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_training_service"):
             workspace.set_project_context(
                 training_service=self._training_service
@@ -499,6 +503,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _create_export_workspace(self) -> QtWidgets.QWidget:
         """Create and wire ExportWorkspace."""
         workspace = ExportWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_training_service"):
             workspace.set_project_context(
                 training_service=self._training_service
@@ -552,6 +558,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
             PreprocessWorkspace,
         )
         workspace = PreprocessWorkspace()
+
+        # Wire DB context for build history
+        if self._context is not None:
+            workspace.set_context(self._context)
 
         # Populate with large images from project assets
         if self._project_path:

@@ -330,7 +330,11 @@ class TrainWorkspace(QtWidgets.QWidget):
         the underlying ``list_completed()`` query only returns rows where
         ``status = 'completed'``.
         """
-        records = self._context.dataset_builds.list_completed()
+        try:
+            records = self._context.dataset_builds.list_completed()
+        except Exception:
+            logger.exception("Failed to load data from DB")
+            return
         self._dataset_builds = records
         self._populate_dataset_combo()
 

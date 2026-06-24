@@ -42,6 +42,8 @@ class ProjectContext:
         self._workflow_state: WorkflowState | None = None
 
     def open(self) -> None:
+        if self.is_open:
+            self.close()
         db_path = self._project_root / "project.sqlite"
         self._db = ProjectDb(db_path)
         self._db.open()
@@ -54,11 +56,24 @@ class ProjectContext:
         self._evaluations = SQLiteEvaluationRepository(self._db)
         self._workflow_query = SQLiteWorkflowQuery(self._db)
         jobs_root = self._project_root / "jobs"
-        self._job_service = JobService(jobs_root)
-        self._workflow_state = WorkflowState(self._project_root)
+        self._job_service = JobService(jobs_root, context=self)
+        self._workflow_state = WorkflowState(
+            self._project_root, self._workflow_query
+        )
         _logger.info("ProjectContext opened for %s", self._project_root)
 
     def close(self) -> None:
+        # Cancel running jobs before releasing the service handle
+        if self._job_service is not None:
+            try:
+                for job_id in list(self._job_service._jobs.keys()):
+                    state = self._job_service.get_job_state(job_id)
+                    if state and state not in TERMINAL_STATES:
+                        self._job_service.cancel_job(job_id)
+            except Exception:
+                _logger.exception(
+                    "Error cancelling jobs during ProjectContext.close()"
+                )
         if self._db is not None:
             self._db.close()
             self._db = None
@@ -75,35 +90,35 @@ class ProjectContext:
         if self._db is None: raise RuntimeError("Not open")
         return self._db
     @property
-    def assets(self):
+    def assets(self) -> SQLiteAssetRepository:
         if self._assets is None: raise RuntimeError("Not open")
         return self._assets
     @property
-    def annotations(self):
+    def annotations(self) -> SQLiteAnnotationRepository:
         if self._annotations is None: raise RuntimeError("Not open")
         return self._annotations
     @property
-    def dataset_builds(self):
+    def dataset_builds(self) -> SQLiteDatasetBuildRepository:
         if self._dataset_builds is None: raise RuntimeError("Not open")
         return self._dataset_builds
     @property
-    def runs(self):
+    def runs(self) -> SQLiteRunRepository:
         if self._runs is None: raise RuntimeError("Not open")
         return self._runs
     @property
-    def jobs(self):
+    def jobs(self) -> SQLiteJobRepository:
         if self._jobs_repo is None: raise RuntimeError("Not open")
         return self._jobs_repo
     @property
-    def models(self):
+    def models(self) -> SQLiteModelRepository:
         if self._models is None: raise RuntimeError("Not open")
         return self._models
     @property
-    def evaluations(self):
+    def evaluations(self) -> SQLiteEvaluationRepository:
         if self._evaluations is None: raise RuntimeError("Not open")
         return self._evaluations
     @property
-    def workflow_query(self):
+    def workflow_query(self) -> SQLiteWorkflowQuery:
         if self._workflow_query is None: raise RuntimeError("Not open")
         return self._workflow_query
     @property
@@ -111,7 +126,7 @@ class ProjectContext:
         if self._job_service is None: raise RuntimeError("Not open")
         return self._job_service
     @property
-    def workflow_state(self):
+    def workflow_state(self) -> WorkflowState:
         if self._workflow_state is None: raise RuntimeError("Not open")
         return self._workflow_state
     @property
