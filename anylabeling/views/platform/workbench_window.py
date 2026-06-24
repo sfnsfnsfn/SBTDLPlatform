@@ -110,7 +110,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle(tr("视觉算法平台", "Vision Algorithm Platform"))
         self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
-        self.resize(1400, 900)
+        self.resize(1920, 1080)
 
         self._central = QtWidgets.QWidget()
         self.setCentralWidget(self._central)
@@ -242,6 +242,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # --- Initialize services via ProjectSession BEFORE UI updates ---
         self._session.open_project(project_path)
         self._job_service = self._session.job_service
+        self._context = self._session.context  # ProjectContext (Phase E/F1)
         self._asset_repository = AssetRepository(project_path)
 
         self._navigation.set_project_open(True)
@@ -261,12 +262,21 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # Wire-up JobService to dependent widgets
         self._job_console.set_job_service(self._job_service)
         self._task_center_drawer.set_job_service(self._job_service)
+        if self._context is not None and hasattr(self._task_center_drawer, 'set_job_repository'):
+            self._task_center_drawer.set_job_repository(
+                self._context.jobs
+            )
 
-        training_service = TrainingService(self._job_service, project_path)
+        training_service = TrainingService(
+            self._job_service, project_path,
+            context=self._context,
+        )
         export_service = ExportService(self._job_service, project_path)
         evaluation_service = EvaluationService(self._job_service, project_path)
         inference_service = InferenceService(self._job_service, project_path)
-        self._dataset_build_service = DatasetBuildService(project_path)
+        self._dataset_build_service = DatasetBuildService(
+            project_path, context=self._context,
+        )
 
         # --- Load project data ---
         task_specs = self._load_task_specs(project_path)
@@ -277,7 +287,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         # --- Import Workspace (embedded import page) ---
         self._import_workspace = ImportWorkspace(
-            ImportService(project_path)
+            ImportService(project_path, context=self._context)
         )
         self._import_workspace.import_completed.connect(
             self._on_import_completed
@@ -288,6 +298,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         # --- Data Workspace (simplified data overview) ---
         self._data_workspace = DataWorkspace()
+        if self._context is not None:
+            self._data_workspace.set_context(self._context)
         asset_paths = self._asset_repository.scan_assets()  # Phase 3a: unified via AssetRepository
         self._data_workspace.set_assets(asset_paths)
         self._data_workspace.import_requested.connect(
@@ -464,6 +476,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _create_train_workspace(self) -> QtWidgets.QWidget:
         """Create and wire TrainWorkspace."""
         workspace = TrainWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_pending_task_specs") and hasattr(self, "_pending_dataset_builds"):
             workspace.set_project_context(
                 job_service=self._job_service,
@@ -471,11 +485,14 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 task_specs=self._pending_task_specs,
                 dataset_builds=self._pending_dataset_builds,
             )
+        self._train_workspace = workspace
         return workspace
 
     def _create_evaluate_workspace(self) -> QtWidgets.QWidget:
         """Create and wire EvaluateWorkspace."""
         workspace = EvaluateWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_training_service"):
             workspace.set_project_context(
                 training_service=self._training_service
@@ -486,6 +503,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
     def _create_export_workspace(self) -> QtWidgets.QWidget:
         """Create and wire ExportWorkspace."""
         workspace = ExportWorkspace()
+        if self._context is not None:
+            workspace.set_context(self._context)
         if hasattr(self, "_training_service"):
             workspace.set_project_context(
                 training_service=self._training_service
@@ -540,6 +559,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         )
         workspace = PreprocessWorkspace()
 
+        # Wire DB context for build history
+        if self._context is not None:
+            workspace.set_context(self._context)
+
         # Populate with large images from project assets
         if self._project_path:
             workspace.set_project_path(self._project_path)
@@ -557,12 +580,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
                 workspace.set_large_images(large_images)
 
             # Set total asset count so Build button enables for normal images
-            if assets_dir.is_dir():
-                total = sum(
-                    1 for p in assets_dir.iterdir()
-                    if p.is_file() and p.suffix.lower() in exts
-                )
-                workspace.set_total_assets(total)
+            total = self._asset_repository.count_assets()
+            workspace.set_total_assets(total)
 
         workspace.build_requested.connect(self._on_preprocess_build_requested)
         return workspace

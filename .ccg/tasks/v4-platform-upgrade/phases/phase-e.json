@@ -1,0 +1,117 @@
+{
+  "phase": "phase-e",
+  "name": "E: Service 接入 DB",
+  "agent": "E1,E2,Lead",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-d"],
+  "blocks": ["phase-f1"],
+  "parallel": false,
+  "summary": "ProjectContext 统一装配 + 全部核心 Service 写 DB",
+  "criticalRule": "ProjectContext 和 ProjectSession 只能由负责人(Lead)串行修改",
+  "tasks": [
+    {
+      "id": "E1-1",
+      "title": "ProjectSession 集成 ProjectContext",
+      "priority": "P0",
+      "agent": "Lead",
+      "criticalFile": true,
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/project_context.py",
+          "anylabeling/platform/application/project_session.py",
+          "tests/platform/application/test_project_session_context.py"
+        ],
+        "forbid": [
+          "anylabeling/views/platform/workbench_window.py",
+          "anylabeling/platform/application/workflow_state.py"
+        ]
+      },
+      "designNotes": [
+        "ProjectContext 作为项目级依赖装配入口",
+        "WorkbenchWindow 只拿 context，不直接创建 Service",
+        "保留 job_service/workflow_state 兼容属性"
+      ],
+      "tddSteps": [
+        "调用 architect 确认设计",
+        "调用 tdd-guide",
+        "先写 open_project 创建 project.sqlite 测试",
+        "先写旧项目自动 bootstrap 测试",
+        "先写 context.repositories 全部非 None 测试",
+        "实现 ProjectContext 装配",
+        "调用 python-reviewer + code-reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_project_session_context.py -q"
+    },
+    {
+      "id": "E2-1",
+      "title": "ImportService 写 DB",
+      "priority": "P0",
+      "agent": "E1",
+      "dependsOn": ["E1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/import_service.py",
+          "tests/platform/application/test_import_service_db_integration.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写导入图片后 assets 表记录增加测试",
+        "先写重复导入 duplicate_count 测试",
+        "先写文件复制失败不写 DB 测试",
+        "实现：导入成功后调用 context.assets.upsert(record)",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_import_service_db_integration.py -q"
+    },
+    {
+      "id": "E2-2",
+      "title": "DatasetBuildService 写 DB",
+      "priority": "P0",
+      "agent": "E1",
+      "dependsOn": ["E1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/dataset_build_service.py",
+          "tests/platform/application/test_dataset_build_service_db_integration.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 build 成功后状态 running→completed 测试",
+        "先写 build 失败后状态 running→failed 测试",
+        "确保 build.json 仍写入文件系统",
+        "实现：构建前 create(running)，完成后 mark_completed，失败后 mark_failed",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_dataset_build_service_db_integration.py -q"
+    },
+    {
+      "id": "E2-3",
+      "title": "TrainingService / JobService 写 DB 镜像",
+      "priority": "P0",
+      "agent": "E2",
+      "dependsOn": ["E1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/training_service.py",
+          "anylabeling/platform/application/job_service.py",
+          "tests/platform/application/test_training_service_db_integration.py",
+          "tests/platform/application/test_job_service_db_mirror.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 completed dataset build 才能训练测试",
+        "先写 missing/failed build 拒绝训练测试",
+        "先写训练开始创建 run/job 测试",
+        "先写训练成功 upsert model ready=1 测试",
+        "保留现有 ProcessJobRunner，不重写进程执行",
+        "实现 JobService 中 job 状态镜像写入 DB",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_training_service_db_integration.py tests/platform/application/test_job_service_db_mirror.py -q"
+    }
+  ]
+}

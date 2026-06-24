@@ -24,21 +24,21 @@ from anylabeling.views.labeling.utils.theme import get_mode, get_theme
 # ---------------------------------------------------------------------------
 
 APPBAR_HEIGHT = 48
-PRIMARY_NAV_WIDTH = 176
+PRIMARY_NAV_WIDTH = 216
 PRIMARY_NAV_MIN_WIDTH = 56
 PAGE_HEADER_HEIGHT = 56
 PAGE_HEADER_MIN_HEIGHT = 48
 PAGE_HEADER_MAX_HEIGHT = 64
 STATUS_BAR_HEIGHT = 24
-TASK_DRAWER_WIDTH = 420
+TASK_DRAWER_WIDTH = 480
 TASK_DRAWER_MIN_WIDTH = 360
 TASK_DRAWER_MAX_WIDTH = 520
-MIN_WINDOW_WIDTH = 1280
-MIN_WINDOW_HEIGHT = 720
+MIN_WINDOW_WIDTH = 1920
+MIN_WINDOW_HEIGHT = 1080
 RECOMMENDED_WIDTH = 1920
 RECOMMENDED_HEIGHT = 1080
 # Responsive breakpoints
-BREAKPOINT_NAV_FOLD = 1440  # Auto-suggest fold below this width
+BREAKPOINT_NAV_FOLD = 1600
 
 
 # ---------------------------------------------------------------------------

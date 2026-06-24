@@ -8,11 +8,14 @@ Phase 3 additions:
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import numpy as np
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 _NO_METRIC_TEXT = tr("未生成", "Not generated")
 
@@ -120,6 +123,7 @@ try:
             super().__init__(parent)
 
             self._training_service = None
+            self._context = None
             self._all_runs: list = []
 
             # --- EvalReportWidget + MisclassGallery (Phase 4) ---
@@ -255,6 +259,11 @@ try:
         def set_project_context(self, training_service=None):
             """Set the training service and populate the runs combo."""
             self._training_service = training_service
+            self._populate_runs()
+
+        def set_context(self, context):
+            """Set the DB project context and populate from completed runs."""
+            self._context = context
             self._populate_runs()
 
         def display_metrics(self, metrics: dict) -> None:
@@ -435,6 +444,29 @@ try:
         def _populate_runs(self):
             self._run_combo.clear()
             self._all_runs = []
+
+            # DB context path
+            context = getattr(self, "_context", None)
+            if context is not None:
+                try:
+                    completed_runs = context.runs.list_completed()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
+                for run in completed_runs:
+                    label = f"{run.id} ({run.task_family}) [{run.status}]"
+                    self._run_combo.addItem(label, run.id)
+                    self._all_runs.append(run)
+
+                self._evaluate_btn.setEnabled(len(completed_runs) > 0)
+                if len(completed_runs) == 0:
+                    self._evaluate_btn.setText(
+                        tr("评估（无已完成运行）", "Evaluate (no completed runs)")
+                    )
+                self._populate_comparison_combos()
+                return
+
+            # Filesystem fallback path
             training_service = getattr(self, "_training_service", None)
             if training_service is None:
                 self._evaluate_btn.setEnabled(False)

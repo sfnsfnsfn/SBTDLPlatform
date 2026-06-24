@@ -1,0 +1,45 @@
+{
+  "phase": "phase-g",
+  "name": "G: 回归与文档",
+  "agent": "G",
+  "priority": "P1",
+  "status": "pending",
+  "dependsOn": ["phase-f1"],
+  "blocks": [],
+  "parallel": true,
+  "parallelGroup": "group-3",
+  "summary": "全流程回归脚本 + 验收文档 + 迁移指南",
+  "tasks": [
+    {
+      "id": "G1-1",
+      "title": "全流程回归脚本与验收文档",
+      "priority": "P1",
+      "writeScope": {
+        "allow": [
+          "docs/platform_db_migration.md",
+          "docs/platform_1920_ui_acceptance.md",
+          "scripts/verify_platform_flow.py",
+          "tests/e2e/test_platform_smoke_flow.py"
+        ],
+        "forbid": [
+          "anylabeling/ (生产代码)"
+        ]
+      },
+      "deliverables": {
+        "docs/platform_db_migration.md": "SQLite 迁移指南：bootstrap 流程、checkpoint/复制、故障恢复",
+        "docs/platform_1920_ui_acceptance.md": "1920x1080 UI 验收清单：每页控件坐标检查表",
+        "scripts/verify_platform_flow.py": "自动化验证脚本：新建项目→导入→构建→训练dry-run→评估记录→导出记录→旧项目bootstrap",
+        "tests/e2e/test_platform_smoke_flow.py": "E2E smoke test 脚手架"
+      },
+      "tddSteps": [
+        "先写 smoke flow 测试脚手架",
+        "实现 verify_platform_flow.py",
+        "覆盖：新建项目、导入、构建、训练 dry-run、评估记录、导出记录、旧项目 bootstrap",
+        "编写迁移文档",
+        "编写 UI 验收文档",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/e2e/test_platform_smoke_flow.py -q && python scripts/verify_platform_flow.py"
+    }
+  ]
+}

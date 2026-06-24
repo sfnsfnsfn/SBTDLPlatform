@@ -69,8 +69,9 @@ class AssetRepository:
     ) -> list[str]:
         """Return sorted absolute paths of supported image files.
 
-        Only immediate children of ``assets/`` are included — this
-        method does **not** recurse into sub-directories.
+        Scans ``assets/`` recursively — images inside sub-directories
+        are included. Their immediate parent directory is used as the
+        group identifier.
 
         Args:
             offset: Number of paths to skip (for pagination).
@@ -247,7 +248,7 @@ class AssetRepository:
         self._asset_paths_cache = tuple(
             sorted(
                 str(p)
-                for p in self._assets_dir.iterdir()
+                for p in self._assets_dir.rglob("*")
                 if p.is_file() and p.suffix.lower() in _IMAGE_EXTS
             )
         )

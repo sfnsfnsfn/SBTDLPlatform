@@ -1,0 +1,75 @@
+{
+  "phase": "phase-d",
+  "name": "D: Bootstrap/迁移",
+  "agent": "D",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-b", "phase-c"],
+  "blocks": ["phase-e"],
+  "parallel": false,
+  "summary": "旧项目索引重建 + CLI 迁移工具",
+  "tasks": [
+    {
+      "id": "D1-1",
+      "title": "实现 ProjectDbBootstrap",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/project_db_bootstrap.py",
+          "tests/platform/infrastructure/test_project_db_bootstrap.py"
+        ],
+        "forbid": [
+          "anylabeling/views/platform/workbench_window.py",
+          "anylabeling/platform/application/project_session.py"
+        ]
+      },
+      "scanRules": [
+        "1. 读取 project.json / labels.json",
+        "2. 扫描 assets/，写入 assets 表",
+        "3. 扫描 annotations/，写入 annotations 摘要",
+        "4. 扫描 dataset_builds/*/build.json，仅 completed 写入 completed",
+        "5. 扫描 runs/，解析 metrics 或 manifest",
+        "6. 扫描 models/，写入 ready model",
+        "7. 输出 BootstrapReport"
+      ],
+      "tddSteps": [
+        "构造 tmp_path 旧项目夹具（含 assets/annotations/dataset_builds/runs/models 目录）",
+        "先写 bootstrap 后 DB 资产计数正确测试",
+        "先写重复 bootstrap 幂等测试（不重复插入）",
+        "先写损坏 annotation 文件不崩溃测试",
+        "实现最小 scanner",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_project_db_bootstrap.py -q"
+    },
+    {
+      "id": "D1-2",
+      "title": "实现 scripts/migrate_project_db.py CLI",
+      "priority": "P1",
+      "dependsOn": ["D1-1"],
+      "writeScope": {
+        "allow": [
+          "scripts/migrate_project_db.py",
+          "tests/scripts/test_migrate_project_db.py"
+        ],
+        "forbid": []
+      },
+      "cliDesign": {
+        "commands": [
+          "python scripts/migrate_project_db.py <project> --dry-run",
+          "python scripts/migrate_project_db.py <project> --rebuild-index",
+          "python scripts/migrate_project_db.py <project> --check",
+          "python scripts/migrate_project_db.py <project> --checkpoint"
+        ]
+      },
+      "tddSteps": [
+        "先写 CLI --dry-run 不创建/修改 DB 测试",
+        "先写 --rebuild-index 创建/更新 DB 测试",
+        "先写 --check 验证索引一致性测试",
+        "实现 argparse CLI",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/scripts/test_migrate_project_db.py -q"
+    }
+  ]
+}

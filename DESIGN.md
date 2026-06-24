@@ -59,6 +59,31 @@
 
 **理由**: 无运行时继承开销; numpy 数组可直接满足协议; `LargeImageSource(Protocol)` 更灵活。
 
+
+### 9. SQLite 元数据索引 (V4 Phase B/C/D)
+
+**决策**: 使用 Python 标准库 sqlite3 + WAL 模式作为项目元数据存储, 文件系统保留图片/模型/标注原文件。
+
+**理由**: 
+- 消除 UI 层直接扫描目录判断状态的隐式耦合
+- ProjectContext 统一装配 Repository + Service
+- WAL 模式支持读写并发 (训练后台写 + UI 前台读)
+- 零外部依赖 (Python 标准库)
+
+**架构**:
+- domain/records.py -- 7 frozen dataclass Record DTO
+- application/ports/ -- 8 Repository Protocol (Port)  
+- infrastructure/project_db.py -- sqlite3 + WAL + PRAGMA
+- infrastructure/migration_runner.py -- 幂等 SQL migration
+- infrastructure/unit_of_work.py -- 事务边界
+- infrastructure/sqlite_repositories/ -- 7 SQLite Repos + WorkflowQuery
+- infrastructure/project_db_bootstrap.py -- 旧项目扫描重建索引 (Phase D)
+- scripts/migrate_project_db.py -- CLI 工具
+
+**Schema 管理**: Migration SQL 是 canonical schema, Repository ensure_table() 作二线防御 (CREATE TABLE IF NOT EXISTS)。
+
+**替代方案**: SQLAlchemy ORM -- 否决 (离线应用不需要额外依赖)
+
 ## 技术栈选择
 
 | 技术 | 理由 | 替代方案 |
@@ -88,3 +113,4 @@
 | 2026-06-09 | Phase 3 补充 + Phase 4 训练闭环 |
 | 2026-06-22 | Unify ImageReader (6 commits) |
 | 2026-06-24 | 文档同步: Codemaps + CodeTour + CONTRIBUTING + DESIGN |
+| 2026-06-24 | Phase D: SQLite bootstrap + CLI + 3 CRITICAL fixes, 351 tests pass |

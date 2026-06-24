@@ -215,9 +215,14 @@ def main():
         default=os.path.expanduser("~"),
     )
     parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="open the legacy X-AnyLabeling standalone labeling window",
+    )
+    parser.add_argument(
         "--platform",
         action="store_true",
-        help="open the V4 Vision Algorithm Platform workbench (project-based pipeline)",
+        help=argparse.SUPPRESS,  # now default, kept for backward compat
     )
     args = parser.parse_args()
 
@@ -373,8 +378,17 @@ def main():
         settings.sync()
         return
 
-    if args.platform:
-        # V4 Platform Workbench mode
+    if args.legacy:
+        # Legacy X-AnyLabeling standalone labeling mode
+        win = MainWindow(
+            app,
+            config=config,
+            filename=filename,
+            output_file=output_file,
+            output_dir=output_dir,
+        )
+    else:
+        # V4 Vision Algorithm Platform workbench (default)
         from anylabeling.views.platform.workbench_window import WorkbenchWindow
 
         win = WorkbenchWindow(config=config)
@@ -395,15 +409,6 @@ def main():
                     )
             except Exception as exc:
                 logger.warning("Could not open as project: %s", exc)
-    else:
-        # Existing X-AnyLabeling standalone mode
-        win = MainWindow(
-            app,
-            config=config,
-            filename=filename,
-            output_file=output_file,
-            output_dir=output_dir,
-        )
 
     if not no_auto_update_check:
 

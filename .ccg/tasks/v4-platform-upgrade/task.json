@@ -1,0 +1,104 @@
+{
+  "id": "v4-platform-upgrade",
+  "title": "V4 平台产品化：SQLite 元数据解耦 + 1920x1080 UI + 多Agent并行开发",
+  "branch": "main",
+  "status": "completed",
+  "strategy": "multi-phase-parallel",
+  "currentPhase": "complete",
+  "prd": ".claude/PRPs/prds/sbtl-platform-v4.prd.md",
+  "phases": [
+    {
+      "id": "phase-a",
+      "name": "A: 安全网与 Bug 修复",
+      "status": "complete",
+      "agent": "A",
+      "parallelGroup": null,
+      "dependsOn": []
+    },
+    {
+      "id": "phase-b",
+      "name": "B: DB 基础设施",
+      "status": "complete",
+      "agent": "B",
+      "parallelGroup": "group-1",
+      "dependsOn": [
+        "phase-a"
+      ]
+    },
+    {
+      "id": "phase-c",
+      "name": "C: Repository 层",
+      "status": "complete",
+      "agent": "C1,C2,C3",
+      "parallelGroup": "group-1",
+      "dependsOn": [
+        "phase-a"
+      ]
+    },
+    {
+      "id": "phase-d",
+      "name": "D: Bootstrap/迁移",
+      "status": "complete",
+      "agent": "D",
+      "parallelGroup": null,
+      "dependsOn": [
+        "phase-b",
+        "phase-c"
+      ]
+    },
+    {
+      "id": "phase-e",
+      "name": "E: Service 接入 DB",
+      "status": "complete",
+      "agent": "E1,E2,Lead",
+      "parallelGroup": null,
+      "dependsOn": [
+        "phase-d"
+      ]
+    },
+    {
+      "id": "phase-f1",
+      "name": "F1: Workflow/Context",
+      "status": "complete",
+      "agent": "F,Lead",
+      "parallelGroup": null,
+      "dependsOn": [
+        "phase-e"
+      ]
+    },
+    {
+      "id": "phase-f2",
+      "name": "F2: UI 接入 DB + 1920 坐标",
+      "status": "complete",
+      "agent": "F",
+      "parallelGroup": null,
+      "dependsOn": [
+        "phase-f1"
+      ]
+    },
+    {
+      "id": "phase-g",
+      "name": "G: 回归与文档",
+      "status": "complete",
+      "agent": "G",
+      "parallelGroup": null,
+      "dependsOn": [
+        "phase-f1"
+      ]
+    }
+  ],
+  "parallelRules": {
+    "R1": "每个任务开始前必须声明 WRITE_SCOPE",
+    "R2": "核心集成文件只能由负责人串行合并",
+    "R3": "workbench_window.py, project_session.py, workflow_state.py 只能由 Lead 修改",
+    "R4": "新文件可并行创建，老文件大改必须排队",
+    "R5": "每个任务必须先写测试再写生产代码 (TDD)",
+    "R6": "不允许多个 Agent 同时写同一文件",
+    "R7": "Python 修改后必须调用 python-reviewer + code-reviewer",
+    "R8": "UI 坐标调整必须有截图或手工验收记录",
+    "R9": "DB schema 只能通过 migration 增量演进",
+    "R10": "旧项目必须可打开，不允许一次性破坏旧 JSON/manifest"
+  },
+  "created": "2026-06-24",
+  "updated": "2026-06-24"
+}

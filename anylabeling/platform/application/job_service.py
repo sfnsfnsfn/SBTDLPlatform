@@ -14,10 +14,11 @@ Architecture constraints:
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from anylabeling.platform.infrastructure.process_job_runner import ProcessJobRunner
 from anylabeling.platform.workers.protocol import (
@@ -47,10 +48,25 @@ class JobService:
         events = service.get_job_events(job_id)
     """
 
-    def __init__(self, jobs_root: str | Path) -> None:
+    def __init__(
+        self,
+        jobs_root: str | Path,
+        context: Any | None = None,
+    ) -> None:
+        """Initialize JobService.
+
+        Args:
+            jobs_root: Filesystem path for job directories.
+            context: Optional ProjectContext for SQLite DB mirroring.
+                When provided, job lifecycle events are mirrored to the
+                project database (JobRecord).
+                When ``None`` (default), the service operates in
+                backward-compatible file-only mode.
+        """
         self._runner = ProcessJobRunner(jobs_root)
         self._jobs: Dict[str, JobRequest] = {}
         self._lock = threading.Lock()
+        self._context = context
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -75,17 +91,89 @@ class JobService:
             The job ID string (available as ``request.job_id``).
         """
         with self._lock:
+            # Step 1: Register in-memory + DB record BEFORE starting
+            # the subprocess, so a DB failure does not leave a zombie.
+            self._jobs[request.job_id] = request
+
+            if self._context is not None:
+                from anylabeling.platform.domain.records import JobRecord
+                record = JobRecord(
+                    id=request.job_id,
+                    kind=request.job_kind,
+                    state="running",
+                    progress=0.0,
+                    payload_json=(
+                        json.dumps(request.params)
+                        if request.params
+                        else None
+                    ),
+                )
+                self._context.jobs.create(record)
+
+            # Step 2: Start the subprocess. If this fails, mark the
+            # DB record as failed so the UI never sees a stuck "running".
             try:
                 self._runner.start(request, command)
-            except Exception:
-                self._jobs[request.job_id] = request
+            except Exception as e:
+                self.mark_job_failed(request.job_id, str(e))
                 logger.exception(
-                    "Job %s (%s) failed to start", request.job_id, request.job_kind
+                    "Job %s (%s) failed to start",
+                    request.job_id,
+                    request.job_kind,
                 )
                 raise
-            self._jobs[request.job_id] = request
+
             logger.info("Job %s (%s) started", request.job_id, request.job_kind)
             return request.job_id
+
+    # ------------------------------------------------------------------
+    # DB mirror helpers
+    # ------------------------------------------------------------------
+
+    def update_job_progress(self, job_id: str, progress: float) -> None:
+        """Update the progress of *job_id* in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+
+        Args:
+            job_id: The job identifier.
+            progress: A float between 0.0 and 1.0.
+
+        Raises:
+            ValueError: If *progress* is not in [0.0, 1.0].
+        """
+        if not 0.0 <= progress <= 1.0:
+            raise ValueError(
+                f"progress must be in [0.0, 1.0], got {progress}"
+            )
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.update_progress(job_id, progress)
+
+    def mark_job_completed(self, job_id: str) -> None:
+        """Mark *job_id* as completed in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+        """
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.mark_completed(job_id)
+
+    def mark_job_failed(self, job_id: str, error_message: str) -> None:
+        """Mark *job_id* as failed in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+
+        Args:
+            job_id: The job identifier.
+            error_message: A human-readable error description.
+        """
+        with self._lock:
+            if self._context is not None:
+                self._context.jobs.mark_failed(job_id, error_message)
 
     def cancel_job(self, job_id: str) -> None:
         """Cancel a running job.

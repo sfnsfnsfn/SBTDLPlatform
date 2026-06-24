@@ -1,0 +1,68 @@
+{
+  "phase": "phase-f1",
+  "name": "F1: Workflow/Context",
+  "agent": "F,Lead",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-e"],
+  "blocks": ["phase-f2", "phase-g"],
+  "parallel": false,
+  "summary": "WorkflowState 从目录扫描切换为 DB 查询 + WorkbenchWindow 最小接入 ProjectContext",
+  "criticalRule": "workbench_window.py + workflow_state.py 只能由负责人(Lead)串行修改",
+  "tasks": [
+    {
+      "id": "F1-1",
+      "title": "WorkflowState 改 DB 查询",
+      "priority": "P0",
+      "agent": "F",
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/workflow_state.py",
+          "tests/platform/application/test_workflow_state_service.py"
+        ],
+        "forbid": [
+          "anylabeling/views/platform/workbench_window.py"
+        ]
+      },
+      "tddSteps": [
+        "先写空目录不代表 ready 测试（不再依赖 dir.iterdir()）",
+        "先写 failed build 不代表 train ready 测试",
+        "先写 ready model 才允许 export 测试",
+        "实现 WorkflowStateService(context.workflow) 查询 DB",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_workflow_state_service.py -q"
+    },
+    {
+      "id": "F1-2",
+      "title": "WorkbenchWindow 最小接入 ProjectContext",
+      "priority": "P0",
+      "agent": "Lead",
+      "criticalFile": true,
+      "dependsOn": ["F1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/workbench_window.py",
+          "tests/views/platform/test_workbench_project_context_wiring.py"
+        ],
+        "forbid": []
+      },
+      "refactorTargets": [
+        "1. self._context = self._session.open_project(project_path)",
+        "2. WorkbenchWindow 不再直接创建 AssetRepository 作为主查询源",
+        "3. Data/Preprocess/Train/Evaluate/Export 都通过 set_context(context) 获取 DB repository",
+        "4. 保留必要兼容层，避免一次性大破坏"
+      ],
+      "tddSteps": [
+        "调用 architect 确认接入方案",
+        "调用 tdd-guide",
+        "先写 WorkbenchWindow.set_project 后 context 非空测试",
+        "先写 DataWorkspace 收到 context 测试",
+        "先写 TrainWorkspace dataset_builds 来自 DB 测试",
+        "最小改造接入 ProjectContext",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_workbench_project_context_wiring.py -q"
+    }
+  ]
+}

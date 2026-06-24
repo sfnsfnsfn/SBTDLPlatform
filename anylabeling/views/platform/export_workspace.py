@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 def _deploy_tree_items() -> list[tuple[str, str, list | None]]:
@@ -50,6 +53,8 @@ try:  # noqa: C901
 
         def __init__(self, parent=None):
             super().__init__(parent)
+
+            self._context = None
 
             # ----------------------------------------------------------
             # Run selection
@@ -330,6 +335,11 @@ try:  # noqa: C901
             self._training_service = training_service
             self._populate_runs()
 
+        def set_context(self, context):
+            """Set the DB project context and populate from ready models."""
+            self._context = context
+            self._populate_runs()
+
         def set_provider(self, provider) -> None:
             """Set the algorithm provider for export compatibility."""
             self._provider = provider
@@ -437,6 +447,37 @@ try:  # noqa: C901
 
         def _populate_runs(self):
             self._run_combo.clear()
+
+            # DB context path
+            context = getattr(self, "_context", None)
+            if context is not None:
+                try:
+                    ready_models = context.models.list_ready()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
+                for model in ready_models:
+                    label = f"{model.name} ({model.task_family})"
+                    self._run_combo.addItem(label, model.run_id)
+
+                if len(ready_models) > 0:
+                    self._status_label.setText(
+                        tr(
+                            f"已就绪 {len(ready_models)} 个模型",
+                            f"{len(ready_models)} model(s) ready",
+                        )
+                    )
+                else:
+                    self._status_label.setText(
+                        tr(
+                            "选择已训练的 Run 以导出（无就绪模型）",
+                            "Select a trained Run to export (no ready models)",
+                        )
+                    )
+                self._export_btn.setEnabled(len(ready_models) > 0)
+                return
+
+            # Filesystem fallback path
             self._run_combo.addItem("", None)  # Empty placeholder
             training_service = getattr(self, "_training_service", None)
             if training_service is None:

@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from anylabeling.views.platform.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +85,7 @@ try:
 
         def __init__(self, parent=None):
             super().__init__(parent)
+            self._context = None
 
             t = get_theme()
             label_font = (
@@ -105,6 +109,11 @@ try:
                 tr("覆盖率：无数据", "Coverage: N/A")
             )
             self._coverage_label.setStyleSheet(label_font)
+
+            self._builds_label = QLabel(
+                tr("数据集构建：0", "Dataset builds: 0")
+            )
+            self._builds_label.setStyleSheet(label_font)
 
             self._goto_preprocess_btn = QPushButton(
                 tr("前往预处理 →", "Go to Preprocess →")
@@ -274,6 +283,7 @@ try:
             right.addWidget(self._stats_label)
             right.addWidget(self._class_dist_label)
             right.addWidget(self._coverage_label)
+            right.addWidget(self._builds_label)
             right.addStretch()
             right.addWidget(self._goto_preprocess_btn)
 
@@ -354,6 +364,50 @@ try:
             """Enable or disable the import button."""
             self._empty_import_btn.setEnabled(enabled)
             self._import_more_btn.setEnabled(enabled)
+
+        def set_context(self, context):
+            """Attach a ProjectContext for DB-backed statistics.
+
+            When set, :meth:`refresh_stats` will query
+            ``context.assets.stats()`` instead of relying on the
+            filesystem-based path.
+
+            Args:
+                context: A ProjectContext instance (or compatible duck-typed
+                    object) providing ``assets.stats()`` access.
+            """
+            self._context = context
+
+        def refresh_stats(self):
+            """Refresh the statistics display from the project context.
+
+            If ``_context`` is available (via :meth:`set_context`), queries
+            ``context.assets.stats()`` for *total_assets*,
+            *annotated_count*, and *completed_builds* and updates the
+            corresponding labels.  When ``_context`` is ``None`` the method
+            is a no-op — the caller should use ``set_assets`` for the
+            filesystem-based flow instead.
+            """
+            if self._context is not None:
+                try:
+                    stats = self._context.assets.stats()
+                except Exception:
+                    logger.exception("Failed to load data from DB")
+                    return
+                total = stats.get("total_assets", 0)
+                annotated = stats.get("annotated_count", 0)
+                builds = stats.get("completed_builds", 0)
+
+                self._stats_label.setText(
+                    tr(f"资源：{total}", f"Assets: {total}")
+                )
+                self.set_coverage(annotated, total)
+                self._builds_label.setText(
+                    tr(
+                        f"数据集构建：{builds}",
+                        f"Dataset builds: {builds}",
+                    )
+                )
 
         # ------------------------------------------------------------------
         # Internal

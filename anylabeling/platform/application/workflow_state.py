@@ -16,6 +16,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Domain values (mirrors primary_navigation.Domain)
 _DOMAIN_PROJECT = 0
@@ -76,8 +77,9 @@ class WorkflowState:
             print(domain_state.state, domain_state.reason)
     """
 
-    def __init__(self, project_root: str | Path) -> None:
+    def __init__(self, project_root: str | Path, workflow_query=None) -> None:
         self._project_root = Path(project_root)
+        self._workflow_query = workflow_query
 
     # ------------------------------------------------------------------
     # Public API
@@ -86,6 +88,10 @@ class WorkflowState:
     @property
     def project_root(self) -> Path:
         return self._project_root
+
+    @property
+    def workflow_query(self):
+        return self._workflow_query
 
     def refresh(self) -> dict[int, DomainState]:
         """Recompute state for all 5 domains.
@@ -134,7 +140,9 @@ class WorkflowState:
         )
 
     def _check_data_prep(self) -> DomainState:
-        """DATA_PREP: checks assets → labels → annotations → builds."""
+        """DATA_PREP: checks assets via DB or filesystem."""
+        if self._workflow_query is not None:
+            return self._check_data_prep_from_db()
         assets_dir = self._project_root / "assets"
         if not assets_dir.is_dir():
             return DomainState(
@@ -236,7 +244,9 @@ class WorkflowState:
         )
 
     def _check_train(self) -> DomainState:
-        """TRAIN: checks builds → runs → latest run status."""
+        """TRAIN: checks builds/runs via DB or filesystem."""
+        if self._workflow_query is not None:
+            return self._check_train_from_db()
         builds_dir = self._project_root / "dataset_builds"
         try:
             has_builds = (
@@ -318,7 +328,9 @@ class WorkflowState:
         )
 
     def _check_eval_validate(self) -> DomainState:
-        """EVAL_VALIDATE: READY when >=1 completed training run exists."""
+        """EVAL_VALIDATE: checks runs/evaluations via DB or filesystem."""
+        if self._workflow_query is not None:
+            return self._check_eval_validate_from_db()
         runs = self._list_runs()
         completed_runs = [
             r for r in runs if r.get("status") == "completed"
@@ -360,7 +372,9 @@ class WorkflowState:
         )
 
     def _check_export(self) -> DomainState:
-        """EXPORT: READY when >=1 model artifact exists."""
+        """EXPORT: checks models via DB or filesystem."""
+        if self._workflow_query is not None:
+            return self._check_export_from_db()
         models_dir = self._project_root / "models"
         if not models_dir.is_dir():
             return DomainState(
@@ -410,6 +424,66 @@ class WorkflowState:
                 "Complete at least one training run",
             ],
         )
+
+    # ------------------------------------------------------------------
+    # DB-backed state checks (used when workflow_query is available)
+    # ------------------------------------------------------------------
+
+    def _check_data_prep_from_db(self) -> DomainState:
+        from anylabeling.platform.domain.workflow_status import WorkflowStepStatus
+        status = self._workflow_query.data_prep_status()
+        if status is WorkflowStepStatus.COMPLETED:
+            return DomainState(domain=_DOMAIN_DATA_PREP, state=_STATE_COMPLETED,
+                reason="Data preparation complete", prerequisites=[])
+        if status is WorkflowStepStatus.RUNNING:
+            return DomainState(domain=_DOMAIN_DATA_PREP, state=_STATE_IN_PROGRESS,
+                reason="Annotation in progress",
+                prerequisites=["Annotate imported assets"])
+        return DomainState(domain=_DOMAIN_DATA_PREP, state=_STATE_NOT_STARTED,
+            reason="Import images to begin data preparation",
+            prerequisites=["Import images or open an image folder"])
+
+    def _check_train_from_db(self) -> DomainState:
+        from anylabeling.platform.domain.workflow_status import WorkflowStepStatus
+        status = self._workflow_query.train_status()
+        if status is WorkflowStepStatus.COMPLETED:
+            return DomainState(domain=_DOMAIN_TRAIN, state=_STATE_COMPLETED,
+                reason="Training completed", prerequisites=[])
+        if status is WorkflowStepStatus.BLOCKED:
+            return DomainState(domain=_DOMAIN_TRAIN, state=_STATE_NEEDS_ATTENTION,
+                reason="Training blocked", prerequisites=["Fix dataset build issues"])
+        if status is WorkflowStepStatus.RUNNING:
+            return DomainState(domain=_DOMAIN_TRAIN, state=_STATE_IN_PROGRESS,
+                reason="Training in progress", prerequisites=[])
+        return DomainState(domain=_DOMAIN_TRAIN, state=_STATE_READY,
+            reason="Ready to train", prerequisites=[])
+
+    def _check_eval_validate_from_db(self) -> DomainState:
+        from anylabeling.platform.domain.workflow_status import WorkflowStepStatus
+        status = self._workflow_query.eval_status()
+        if status is WorkflowStepStatus.COMPLETED:
+            return DomainState(domain=_DOMAIN_EVAL_VALIDATE, state=_STATE_COMPLETED,
+                reason="Evaluation completed", prerequisites=[])
+        if status is WorkflowStepStatus.BLOCKED:
+            return DomainState(domain=_DOMAIN_EVAL_VALIDATE, state=_STATE_NOT_STARTED,
+                reason="Complete training before evaluation",
+                prerequisites=["Complete at least one training run"])
+        return DomainState(domain=_DOMAIN_EVAL_VALIDATE, state=_STATE_READY,
+            reason="Ready to evaluate", prerequisites=[])
+
+    def _check_export_from_db(self) -> DomainState:
+        from anylabeling.platform.domain.workflow_status import WorkflowStepStatus
+        status = self._workflow_query.export_status()
+        if status is WorkflowStepStatus.COMPLETED:
+            return DomainState(domain=_DOMAIN_EXPORT, state=_STATE_READY,
+                reason="Model(s) available for export", prerequisites=[])
+        if status is WorkflowStepStatus.BLOCKED:
+            return DomainState(domain=_DOMAIN_EXPORT, state=_STATE_NOT_STARTED,
+                reason="Complete evaluation before exporting",
+                prerequisites=["Complete evaluation"])
+        return DomainState(domain=_DOMAIN_EXPORT, state=_STATE_NOT_STARTED,
+            reason="Train a model before export",
+            prerequisites=["Complete at least one training run"])
 
     # ------------------------------------------------------------------
     # Helpers

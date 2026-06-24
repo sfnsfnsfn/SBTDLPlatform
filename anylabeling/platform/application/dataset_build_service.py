@@ -14,7 +14,12 @@ import uuid
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from anylabeling.platform.domain.records import DatasetBuildRecord
+
+if TYPE_CHECKING:
+    from anylabeling.platform.application.project_context import ProjectContext
 
 import cv2
 import numpy as np
@@ -87,15 +92,20 @@ class DatasetBuildService:
     5. Return a ``DatasetBuild`` with build metadata.
     """
 
-    def __init__(self, project_root: str | Path) -> None:
+    def __init__(self, project_root: str | Path, context: ProjectContext | None = None) -> None:
         """Initialize with the project root directory.
 
         Parameters
         ----------
         project_root:
             Root of the V4 MVP project directory (contains ``dataset_builds/``).
+        context:
+            Optional ProjectContext for persisting build state to SQLite.
+            When ``None`` (default), only filesystem artifacts are written
+            (backward-compatible with existing callers).
         """
         self._project_root = Path(project_root)
+        self._context = context
 
     @property
     def project_root(self) -> Path:
@@ -191,138 +201,197 @@ class DatasetBuildService:
         )
 
         build_dir = self._project_root / "dataset_builds" / build_id
+
+        # --- create DB record before any build work (if context available) ---
+        if self._context is not None:
+            split_ratios_json = json.dumps(
+                {
+                    "train": split_ratios[0],
+                    "val": split_ratios[1],
+                    "test": split_ratios[2],
+                }
+            )
+            tile_plan_json: str | None = None
+            if tile_plan is not None:
+                tile_plan_json = json.dumps(
+                    {
+                        "tile_width": tile_plan.tile_width,
+                        "tile_height": tile_plan.tile_height,
+                        "overlap_x": tile_plan.overlap_x,
+                        "overlap_y": tile_plan.overlap_y,
+                        "edge_mode": tile_plan.edge_mode,
+                        "min_object_pixels": tile_plan.min_object_pixels,
+                        "min_visibility_ratio": tile_plan.min_visibility_ratio,
+                    }
+                )
+            self._context.dataset_builds.create(
+                DatasetBuildRecord(
+                    id=build_id,
+                    task_family=task_spec.family,
+                    output_path=str(build_dir),
+                    split_strategy=split_strategy,
+                    split_seed=split_seed,
+                    split_ratios_json=split_ratios_json,
+                    tile_plan_json=tile_plan_json,
+                    preprocess_config_json=None,
+                    manifest_hash="",
+                    status="running",
+                )
+            )
+
+        # mkdir AFTER DB record creation — avoids orphaned directories
+        # if the DB insert fails
         build_dir.mkdir(parents=True, exist_ok=True)
 
-        images_dir = build_dir / "images"
-        labels_dir = build_dir / "labels"
+        try:
+            images_dir = build_dir / "images"
+            labels_dir = build_dir / "labels"
 
-        # --- step 1: assign splits ---
-        asset_splits = self._assign_splits(assets, split_seed, split_ratios, split_strategy)
+            # --- step 1: assign splits ---
+            asset_splits = self._assign_splits(assets, split_seed, split_ratios, split_strategy)
 
-        # --- step 2: generate tiles & materialize ---
-        all_tiles: list[TileRecord] = []
-        tile_split_map: dict[str, str] = {}  # tile_id → split
+            # --- step 2: generate tiles & materialize ---
+            all_tiles: list[TileRecord] = []
+            tile_split_map: dict[str, str] = {}  # tile_id → split
 
-        if tile_plan is not None:
-            for asset in assets:
-                asset_tiles = TilePlanner.plan(asset, tile_plan)
-                split_label = asset_splits[asset.id]
+            if tile_plan is not None:
+                for asset in assets:
+                    asset_tiles = TilePlanner.plan(asset, tile_plan)
+                    split_label = asset_splits[asset.id]
 
-                # Assign split to each tile
-                tiles_with_split: list[TileRecord] = []
-                for t in asset_tiles:
-                    t_with_split = TileRecord(
-                        tile_id=t.tile_id,
-                        asset_id=t.asset_id,
-                        x0=t.x0,
-                        y0=t.y0,
-                        width=t.width,
-                        height=t.height,
-                        valid_width=t.valid_width,
-                        valid_height=t.valid_height,
-                        split=split_label,  # type: ignore[arg-type]
-                    )
-                    tiles_with_split.append(t_with_split)
-                    tile_split_map[t.tile_id] = split_label
-                    all_tiles.append(t_with_split)
+                    # Assign split to each tile
+                    tiles_with_split: list[TileRecord] = []
+                    for t in asset_tiles:
+                        t_with_split = TileRecord(
+                            tile_id=t.tile_id,
+                            asset_id=t.asset_id,
+                            x0=t.x0,
+                            y0=t.y0,
+                            width=t.width,
+                            height=t.height,
+                            valid_width=t.valid_width,
+                            valid_height=t.valid_height,
+                            split=split_label,  # type: ignore[arg-type]
+                        )
+                        tiles_with_split.append(t_with_split)
+                        tile_split_map[t.tile_id] = split_label
+                        all_tiles.append(t_with_split)
 
-                # Materialize tiles for this asset
-                source = image_sources.get(asset.id)
-                if source is None:
-                    raise ValueError(
-                        f"No image source for asset {asset.id} (required for tiling)"
-                    )
+                    # Materialize tiles for this asset
+                    source = image_sources.get(asset.id)
+                    if source is None:
+                        raise ValueError(
+                            f"No image source for asset {asset.id} (required for tiling)"
+                        )
 
-                split_dir = images_dir / split_label
-                materializer = TileMaterializer(split_dir)
-                materializer.materialize_all(source, tiles_with_split)
+                    split_dir = images_dir / split_label
+                    materializer = TileMaterializer(split_dir)
+                    materializer.materialize_all(source, tiles_with_split)
 
-                # Write YOLO label files for each tile
-                splitter_cls = _SPLITTER_REGISTRY.get(task_spec.family)
-                if splitter_cls is not None:
+                    # Write YOLO label files for each tile
+                    splitter_cls = _SPLITTER_REGISTRY.get(task_spec.family)
+                    if splitter_cls is not None:
+                        ann_doc = annotations.get(asset.id)
+                        splitter = splitter_cls()
+                        label_out_dir = labels_dir / split_label
+                        label_out_dir.mkdir(parents=True, exist_ok=True)
+                        for t in tiles_with_split:
+                            tile_objects = (
+                                splitter.split(ann_doc, t, tile_plan)
+                                if ann_doc is not None
+                                else []
+                            )
+                            self._write_yolo_labels(
+                                tile_objects,
+                                t.width,
+                                t.height,
+                                label_out_dir / f"{t.tile_id}.txt",
+                                task_spec,
+                            )
+            else:
+                # No tiling — write YOLO labels for full images
+                for asset in assets:
+                    split_label = asset_splits[asset.id]
                     ann_doc = annotations.get(asset.id)
-                    splitter = splitter_cls()
+                    if ann_doc is None:
+                        continue
+
+                    splitter_cls = _SPLITTER_REGISTRY.get(task_spec.family)
                     label_out_dir = labels_dir / split_label
                     label_out_dir.mkdir(parents=True, exist_ok=True)
-                    for t in tiles_with_split:
-                        tile_objects = (
-                            splitter.split(ann_doc, t, tile_plan)
-                            if ann_doc is not None
-                            else []
-                        )
+
+                    if splitter_cls is not None:
+                        # For no-tiling, write YOLO labels directly from annotation objects
                         self._write_yolo_labels(
-                            tile_objects,
-                            t.width,
-                            t.height,
-                            label_out_dir / f"{t.tile_id}.txt",
+                            ann_doc.objects,
+                            asset.width,
+                            asset.height,
+                            label_out_dir / f"{asset.id}.txt",
                             task_spec,
                         )
-        else:
-            # No tiling — write YOLO labels for full images
-            for asset in assets:
-                split_label = asset_splits[asset.id]
-                ann_doc = annotations.get(asset.id)
-                if ann_doc is None:
-                    continue
 
-                splitter_cls = _SPLITTER_REGISTRY.get(task_spec.family)
-                label_out_dir = labels_dir / split_label
-                label_out_dir.mkdir(parents=True, exist_ok=True)
+                    # Copy full images to split dirs if sources available
+                    source = image_sources.get(asset.id)
+                    if source is not None:
+                        img_out_dir = images_dir / split_label
+                        img_out_dir.mkdir(parents=True, exist_ok=True)
+                        pixels = source.read_region(
+                            rect_l0=(0, 0, asset.width, asset.height),
+                            output_size=(asset.width, asset.height),
+                        )
+                        out_path = img_out_dir / f"{asset.id}.png"
+                        self._save_image(pixels, out_path)
 
-                if splitter_cls is not None:
-                    # For no-tiling, write YOLO labels directly from annotation objects
-                    self._write_yolo_labels(
-                        ann_doc.objects,
-                        asset.width,
-                        asset.height,
-                        label_out_dir / f"{asset.id}.txt",
-                        task_spec,
+            # --- step 4: compute manifest hashes ---
+            asset_manifest_hash = self._hash_asset_list(assets)
+            annotation_manifest_hash = self._hash_annotations(annotations)
+
+            # --- step 5: write manifests ---
+            self._write_split_manifest(build_dir, assets, asset_splits, all_tiles)
+            if tile_plan is not None:
+                self._write_tile_manifest(build_dir, all_tiles)
+
+            # --- step 6: write data.yaml ---
+            self._write_data_yaml(build_dir, task_spec)
+
+            # --- step 7: write build.json ---
+            dataset_build = DatasetBuild(
+                id=build_id,
+                task_spec_id=task_spec.id,
+                source_asset_manifest_hash=asset_manifest_hash,
+                annotation_manifest_hash=annotation_manifest_hash,
+                split_seed=split_seed,
+                split_strategy=split_strategy,
+                tile_plan=tile_plan,
+                output_path=str(build_dir),
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            self._write_build_json(build_dir, dataset_build)
+
+            # --- step 8: mark completed in DB first, then write _READY ---
+            if self._context is not None:
+                self._context.dataset_builds.mark_completed(build_id)
+
+            # write _READY sentinel ONLY after DB mark succeeds
+            (build_dir / "_READY").write_text(
+                f"build {build_id} completed\n", encoding="utf-8"
+            )
+
+            return dataset_build
+
+        except Exception as exc:
+            if self._context is not None:
+                try:
+                    self._context.dataset_builds.mark_failed(
+                        build_id, error_message=str(exc)
                     )
-
-                # Copy full images to split dirs if sources available
-                source = image_sources.get(asset.id)
-                if source is not None:
-                    img_out_dir = images_dir / split_label
-                    img_out_dir.mkdir(parents=True, exist_ok=True)
-                    pixels = source.read_region(
-                        rect_l0=(0, 0, asset.width, asset.height),
-                        output_size=(asset.width, asset.height),
+                except Exception as db_exc:
+                    logger.error(
+                        "Failed to mark build %s as failed in DB: %s",
+                        build_id,
+                        db_exc,
                     )
-                    out_path = img_out_dir / f"{asset.id}.png"
-                    self._save_image(pixels, out_path)
-
-        # --- step 4: compute manifest hashes ---
-        asset_manifest_hash = self._hash_asset_list(assets)
-        annotation_manifest_hash = self._hash_annotations(annotations)
-
-        # --- step 5: write manifests ---
-        self._write_split_manifest(build_dir, assets, asset_splits, all_tiles)
-        if tile_plan is not None:
-            self._write_tile_manifest(build_dir, all_tiles)
-
-        # --- step 6: write data.yaml ---
-        self._write_data_yaml(build_dir, task_spec)
-
-        # --- step 7: write build.json ---
-        dataset_build = DatasetBuild(
-            id=build_id,
-            task_spec_id=task_spec.id,
-            source_asset_manifest_hash=asset_manifest_hash,
-            annotation_manifest_hash=annotation_manifest_hash,
-            split_seed=split_seed,
-            split_strategy=split_strategy,
-            tile_plan=tile_plan,
-            output_path=str(build_dir),
-            created_at=datetime.now(timezone.utc).isoformat(),
-        )
-        self._write_build_json(build_dir, dataset_build)
-
-        # --- step 8: write _READY marker ---
-        (build_dir / "_READY").write_text(
-            f"build {build_id} completed\n", encoding="utf-8"
-        )
-
-        return dataset_build
+            raise
 
     # ------------------------------------------------------------------
     # split assignment

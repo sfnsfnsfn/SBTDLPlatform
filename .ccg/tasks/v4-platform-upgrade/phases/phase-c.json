@@ -1,0 +1,168 @@
+{
+  "phase": "phase-c",
+  "name": "C: Repository 层",
+  "agent": "C1,C2,C3",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-a"],
+  "blocks": ["phase-d"],
+  "parallel": true,
+  "parallelGroup": "group-1",
+  "summary": "定义 Record DTO + Repository Protocol + 全部 SQLite Repository 实现 + WorkflowQuery",
+  "subAgents": {
+    "C1": {
+      "tasks": ["C1-1", "C1-2", "C1-3"],
+      "description": "Records/Ports + AssetRepository + AnnotationRepository"
+    },
+    "C2": {
+      "tasks": ["C2-1", "C2-2"],
+      "description": "DatasetBuild + Run/Job/Model/Evaluation Repositories"
+    },
+    "C3": {
+      "tasks": ["C3-1"],
+      "description": "WorkflowQuery"
+    }
+  },
+  "tasks": [
+    {
+      "id": "C1-1",
+      "title": "定义 Record DTO 与 Repository Protocol",
+      "priority": "P0",
+      "agent": "C1",
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/domain/records.py",
+          "anylabeling/platform/application/ports/__init__.py",
+          "anylabeling/platform/application/ports/repositories.py",
+          "tests/platform/application/test_repository_ports_contract.py"
+        ],
+        "forbid": [],
+        "note": "需要先将 application/ports.py (44行) 转为 application/ports/__init__.py，保留原有内容"
+      },
+      "tddSteps": [
+        "先写 Record 默认值与不可变性测试",
+        "定义 AssetRecord、AnnotationSummaryRecord、DatasetBuildRecord、RunRecord、JobRecord、ModelRecord、EvaluationRecord",
+        "定义 Query DTO：AssetQuery、DatasetBuildQuery、RunQuery",
+        "定义 Repository Protocol：AssetRepositoryPort、AnnotationRepositoryPort、DatasetBuildRepositoryPort、RunRepositoryPort、JobRepositoryPort、ModelRepositoryPort、EvaluationRepositoryPort、WorkflowQueryPort",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_repository_ports_contract.py -q"
+    },
+    {
+      "id": "C1-2",
+      "title": "实现 SQLiteAssetRepository",
+      "priority": "P0",
+      "agent": "C1",
+      "dependsOn": ["B1-2", "C1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/sqlite_repositories/__init__.py",
+          "anylabeling/platform/infrastructure/sqlite_repositories/assets.py",
+          "tests/platform/infrastructure/test_sqlite_asset_repository.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 upsert/list/get/stats/mark_deleted 测试",
+        "确认失败",
+        "实现 INSERT ... ON CONFLICT(rel_path) DO UPDATE",
+        "默认查询只返回 status='active'",
+        "补 group/status/sha256 查询测试",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_sqlite_asset_repository.py -q"
+    },
+    {
+      "id": "C1-3",
+      "title": "实现 SQLiteAnnotationRepository",
+      "priority": "P0",
+      "agent": "C1",
+      "dependsOn": ["C1-2"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/sqlite_repositories/annotations.py",
+          "tests/platform/infrastructure/test_sqlite_annotation_repository.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 annotation summary upsert 测试",
+        "先写 label_histogram_json 稳定序列化测试",
+        "实现 upsert_summary/get_by_asset/count_annotated/label_histogram",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_sqlite_annotation_repository.py -q"
+    },
+    {
+      "id": "C2-1",
+      "title": "实现 SQLiteDatasetBuildRepository",
+      "priority": "P0",
+      "agent": "C2",
+      "dependsOn": ["B1-2", "C1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/sqlite_repositories/dataset_builds.py",
+          "tests/platform/infrastructure/test_sqlite_dataset_build_repository.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写状态机测试：created→running→completed/failed",
+        "先写 failed build 不列入 list_completed 测试",
+        "先写 mark_deleted 后默认查询不可见测试",
+        "实现 create/mark_running/mark_completed/mark_failed/list_completed/get_latest_completed",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_sqlite_dataset_build_repository.py -q"
+    },
+    {
+      "id": "C2-2",
+      "title": "实现 SQLiteRun/Job/Model/Evaluation Repositories",
+      "priority": "P0",
+      "agent": "C2",
+      "dependsOn": ["C1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/sqlite_repositories/runs.py",
+          "anylabeling/platform/infrastructure/sqlite_repositories/jobs.py",
+          "anylabeling/platform/infrastructure/sqlite_repositories/models.py",
+          "anylabeling/platform/infrastructure/sqlite_repositories/evaluations.py",
+          "tests/platform/infrastructure/test_sqlite_run_job_model_repositories.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 run created/running/completed/failed 状态测试",
+        "先写 job progress/state 更新测试",
+        "先写 model ready=1 查询测试",
+        "先写 evaluation completed 查询测试",
+        "实现最小 repository",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_sqlite_run_job_model_repositories.py -q"
+    },
+    {
+      "id": "C3-1",
+      "title": "实现 SQLiteWorkflowQuery",
+      "priority": "P0",
+      "agent": "C3",
+      "dependsOn": ["C1-2", "C1-3", "C2-1", "C2-2"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/sqlite_repositories/workflow_query.py",
+          "tests/platform/infrastructure/test_sqlite_workflow_query.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写空项目状态测试（全部返回 0）",
+        "先写 failed build 不 ready 测试",
+        "先写 ready model 才允许 export 测试",
+        "实现 6 个 COUNT 查询：assets/annotations/builds/runs/evaluations/models",
+        "实现 next_action() 逻辑",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_sqlite_workflow_query.py -q"
+    }
+  ]
+}

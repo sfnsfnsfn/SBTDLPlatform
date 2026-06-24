@@ -5,6 +5,17 @@ from typing import Protocol, runtime_checkable
 
 from anylabeling.platform.domain.annotation import AnnotationDocument
 
+from anylabeling.platform.application.ports.repositories import (
+    AnnotationRepositoryPort,
+    AssetRepositoryPort,
+    DatasetBuildRepositoryPort,
+    EvaluationRepositoryPort,
+    JobRepositoryPort,
+    ModelRepositoryPort,
+    RunRepositoryPort,
+    WorkflowQueryPort,
+)
+
 
 @runtime_checkable
 class AnnotationCodec(Protocol):
@@ -41,4 +52,14 @@ class AnnotationCodec(Protocol):
         ...
 
 
-__all__ = ["AnnotationCodec"]
+__all__ = [
+    "AnnotationCodec",
+    "AnnotationRepositoryPort",
+    "AssetRepositoryPort",
+    "DatasetBuildRepositoryPort",
+    "EvaluationRepositoryPort",
+    "JobRepositoryPort",
+    "ModelRepositoryPort",
+    "RunRepositoryPort",
+    "WorkflowQueryPort",
+]

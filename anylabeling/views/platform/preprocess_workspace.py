@@ -53,6 +53,7 @@ class PreprocessWorkspace(QtWidgets.QWidget):
         self._preview_debounce_timer = QtCore.QTimer(self)
         self._preview_debounce_timer.setSingleShot(True)
         self._preview_debounce_timer.timeout.connect(self._update_preview)
+        self._context = None
         self._setup_ui()
 
     # ------------------------------------------------------------------
@@ -373,6 +374,10 @@ class PreprocessWorkspace(QtWidgets.QWidget):
     def set_task_family(self, family: str) -> None:
         """Set the task family for label splitter selection."""
         self._task_family = family
+
+    def set_context(self, context) -> None:
+        """Set the ProjectContext for DB-backed build history."""
+        self._context = context
 
     def set_total_assets(self, count: int):
         """Set the total number of assets (large + normal images).
@@ -790,36 +795,20 @@ class PreprocessWorkspace(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def _refresh_history(self) -> None:
-        """Scan dataset_builds/ directory and populate the history table."""
+        """Populate the history table from DB (preferred) or filesystem."""
         self._history_table.setRowCount(0)
-
-        if not self._project_path:
-            return
-
-        builds_dir = Path(self._project_path) / "dataset_builds"
-        if not builds_dir.is_dir():
-            return
-
         builds: list[dict] = []
-        for build_dir in sorted(builds_dir.iterdir(), reverse=True):
-            if not build_dir.is_dir():
-                continue
-            build_json = build_dir / "build.json"
-            if not build_json.exists():
-                continue
-            try:
-                data = json.loads(build_json.read_text(encoding="utf-8"))
-                ready = (build_dir / "_READY").exists()
-                builds.append({
-                    "id": data.get("id", build_dir.name),
-                    "created_at": data.get("created_at", ""),
-                    "status": "ready" if ready else "failed",
-                    "dir": str(build_dir),
-                })
-            except Exception:
-                logger.exception(
-                    "Failed to read build.json from %s", build_dir
-                )
+
+        if self._context is not None:
+            self._load_history_from_db(builds)
+        elif self._project_path:
+            self._load_history_from_fs(builds)
+
+        if not builds:
+            return
+
+        # Sort by date, newest first
+        builds.sort(key=lambda b: b.get("created_at", ""), reverse=True)
 
         self._history_table.setRowCount(len(builds))
         for row, build in enumerate(builds):
@@ -850,9 +839,10 @@ class PreprocessWorkspace(QtWidgets.QWidget):
             self._history_table.setItem(row, 3, tile_item)
 
             # Status
-            status_text = tr("就绪", "Ready") if build["status"] == "ready" else tr("失败", "Failed")
+            is_ready = build["status"] == "ready"
+            status_text = tr("就绪", "Ready") if is_ready else tr("失败", "Failed")
             status_item = QtWidgets.QTableWidgetItem(status_text)
-            if build["status"] == "ready":
+            if is_ready:
                 status_item.setForeground(
                     QtCore.Qt.GlobalColor.darkGreen
                 )
@@ -869,9 +859,18 @@ class PreprocessWorkspace(QtWidgets.QWidget):
             actions_layout.setSpacing(4)
 
             use_btn = QtWidgets.QPushButton(tr("使用配置", "Use Config"))
-            use_btn.clicked.connect(
-                lambda checked, d=build["dir"]: self._use_build_config(d)
-            )
+            if is_ready:
+                use_btn.clicked.connect(
+                    lambda checked, d=build["dir"]: self._use_build_config(d)
+                )
+            else:
+                use_btn.setEnabled(False)
+                use_btn.setToolTip(
+                    tr(
+                        "该构建失败，不可用于训练",
+                        "Not available for training",
+                    )
+                )
             actions_layout.addWidget(use_btn)
 
             open_btn = QtWidgets.QPushButton(tr("打开目录", "Open Dir"))
@@ -885,6 +884,57 @@ class PreprocessWorkspace(QtWidgets.QWidget):
             self._history_table.setCellWidget(row, 5, actions_widget)
 
         self._history_table.resizeColumnsToContents()
+
+    def _load_history_from_db(self, builds: list[dict]) -> None:
+        """Load build history from the ProjectContext database."""
+        try:
+            completed = self._context.dataset_builds.list_completed()
+            for rec in completed:
+                builds.append({
+                    "id": rec.id,
+                    "created_at": rec.completed_at or rec.created_at or "",
+                    "status": "ready",
+                    "dir": rec.output_path,
+                })
+
+            failed = self._context.dataset_builds.list_failed()
+            for rec in failed:
+                builds.append({
+                    "id": rec.id,
+                    "created_at": rec.completed_at
+                              or rec.created_at
+                              or "",
+                    "status": "failed",
+                    "dir": rec.output_path,
+                    "error_message": rec.error_message or "",
+                })
+        except Exception:
+            logger.exception("Failed to load build history from DB")
+
+    def _load_history_from_fs(self, builds: list[dict]) -> None:
+        """Load build history from the filesystem dataset_builds/ directory."""
+        builds_dir = Path(self._project_path) / "dataset_builds"
+        if not builds_dir.is_dir():
+            return
+        for build_dir in sorted(builds_dir.iterdir(), reverse=True):
+            if not build_dir.is_dir():
+                continue
+            build_json = build_dir / "build.json"
+            if not build_json.exists():
+                continue
+            try:
+                data = json.loads(build_json.read_text(encoding="utf-8"))
+                ready = (build_dir / "_READY").exists()
+                builds.append({
+                    "id": data.get("id", build_dir.name),
+                    "created_at": data.get("created_at", ""),
+                    "status": "ready" if ready else "failed",
+                    "dir": str(build_dir),
+                })
+            except Exception:
+                logger.exception(
+                    "Failed to read build.json from %s", build_dir
+                )
 
     @staticmethod
     def _count_assets_in_build(build_dir: str) -> int:
