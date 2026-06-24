@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Dict
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 from anylabeling.platform.adapters.registry import AlgorithmRegistry
 from anylabeling.platform.adapters.ultralytics.train_adapter import TrainRequest

@@ -114,6 +114,14 @@ markers = ["slow: skip slow tests unless --slow is set"]
 | `python-patterns.md` | Protocol、dataclass、context manager、生成器、异常层次结构 |
 | `python-testing.md` | pytest 规范、AAA 模式、mock、夹具、标记 |
 
+## 代码清理记录
+
+2026-06-25 执行了全面的死代码清理：
+- 移除了 57 个未使用的导入（跨 57 个源文件）
+- 移除了注释掉的代码块（canvas.py, label_widget.py）
+- 移除了 Python <3.8 兼容性分支（sahi/versions.py）
+- 保留了有意的副作用导入和第三方代码
+
 ## 推荐技能
 
 以下 ECC 技能对本项目有价值（已全局安装）：

@@ -4,16 +4,13 @@ dynamic param generation, TrainingMonitor, incremental training checkbox.
 from __future__ import annotations
 
 import sys
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtWidgets
 
 
 @pytest.fixture(autouse=True)

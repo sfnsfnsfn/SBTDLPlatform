@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtGui import QFont

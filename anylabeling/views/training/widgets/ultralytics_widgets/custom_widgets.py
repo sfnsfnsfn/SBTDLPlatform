@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6 import QtCore
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QBrush, QColor
 
 from anylabeling.services.auto_training.ultralytics.config import *
 from anylabeling.services.auto_training.ultralytics.style import *

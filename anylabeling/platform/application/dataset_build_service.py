@@ -10,8 +10,6 @@ import hashlib
 import json
 import logging
 import random
-import uuid
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any

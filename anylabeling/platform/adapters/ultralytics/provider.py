@@ -25,7 +25,6 @@ from anylabeling.platform.adapters.registry import AlgorithmCapabilities
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from anylabeling.platform.domain.model import ModelArtifact
     from anylabeling.platform.domain.run import MetricPoint
 
 

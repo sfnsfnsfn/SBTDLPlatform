@@ -7,7 +7,7 @@ from anylabeling.platform.application.annotation_adapter import (
     shapes_to_annotation_doc,
     annotation_doc_to_shapes,
 )
-from anylabeling.platform.domain.annotation import AnnotationDocument, AnnotationObject
+from anylabeling.platform.domain.annotation import AnnotationDocument
 
 
 class TestTaskFamilyMapping:

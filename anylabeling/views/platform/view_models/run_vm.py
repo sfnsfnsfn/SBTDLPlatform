@@ -11,7 +11,6 @@ import logging
 from anylabeling.platform.application.job_service import JobService
 from anylabeling.platform.application.training_service import TrainingService
 from anylabeling.platform.adapters.ultralytics.train_adapter import TrainRequest
-from anylabeling.platform.workers.protocol import JobState
 
 logger = logging.getLogger(__name__)
 

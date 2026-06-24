@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from anylabeling.platform.domain.asset import Asset
-from anylabeling.platform.domain.tile import TilePlan, TileRecord
+from anylabeling.platform.domain.tile import TilePlan
 from anylabeling.platform.tiling.tile_planner import TilePlanner
 
 

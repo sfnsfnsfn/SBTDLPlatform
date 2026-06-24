@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from anylabeling.platform.application.workflow_state import WorkflowState, DomainState
+from anylabeling.platform.application.workflow_state import WorkflowState
 from anylabeling.platform.application.project_context import ProjectContext
 
 

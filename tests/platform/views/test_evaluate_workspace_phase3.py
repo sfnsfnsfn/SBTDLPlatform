@@ -3,18 +3,14 @@ per-class analysis table, multi-run comparison, MisclassificationService.
 """
 from __future__ import annotations
 
-import json
 import sys
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtWidgets
 
 
 @pytest.fixture(autouse=True)

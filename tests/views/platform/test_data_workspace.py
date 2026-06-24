@@ -7,7 +7,6 @@ inputs, DatasetBuild trigger, and parameter validation.
 from __future__ import annotations
 
 import os
-import sys
 import pytest
 
 

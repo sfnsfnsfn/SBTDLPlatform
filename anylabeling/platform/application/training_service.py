@@ -689,8 +689,6 @@ class TrainingService:
         found, for backward compatibility with runs created before the
         provider migration.
         """
-        from anylabeling.platform.adapters.provider import AlgorithmProvider
-
         if adapter_id:
             try:
                 return AlgorithmRegistry.get_provider(adapter_id)

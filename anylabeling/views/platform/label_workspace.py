@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 from anylabeling.platform.application.asset_repository import AssetRepository
 from anylabeling.views.platform.i18n import tr

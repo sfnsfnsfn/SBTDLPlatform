@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~800 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~850 | Updated: dead code cleanup -->
 
 # 启动与生命周期 (Startup & Lifecycle)
 
@@ -13,16 +13,18 @@
  6. 子命令分发 → 若匹配则早返回 (不启动 GUI)
  7. 延迟导入                                   ← MainWindow, logger, theme, translations, resources
  8. 3 层配置合并                               ← defaults → ~/.xanylabelingrc → CLI
- 9. 日志级别, Qt 平台, 图像内存限制
-10. 输出文件/目录解析, 翻译加载
-11. OpenGL 共享上下文, QApplication 创建
-12. 主题: palette → stylesheet
-13. 模式分支:
-    ├── --platform → WorkbenchWindow(config)
+ 9. setup_logging()                            ← 集中式日志初始化 (幂等)
+10. 日志级别, Qt 平台, 图像内存限制
+11. 输出文件/目录解析, 翻译加载
+12. OpenGL 共享上下文, QApplication 创建
+13. 主题: palette → stylesheet
+14. 模式分支:
+    ├── --platform (默认) → WorkbenchWindow(config)
     │   └── 若 --filename 是有效 V4 目录 → set_project()
-    └── 否则 → MainWindow(app, config, filename, output)
-14. QTimer.singleShot(2000ms) → 更新检查 (除非 --no-auto-update-check)
-15. win.showMaximized() → app.exec()
+    │       → ProjectContext.open() → SQLite + Repos + Services
+    └── --no-platform → MainWindow(app, config, filename, output)
+15. QTimer.singleShot(2000ms) → 更新检查 (除非 --no-auto-update-check)
+16. win.showMaximized() → app.exec()
 ```
 
 ## CLI 参数 (`app.py:47-222`)
@@ -35,7 +37,8 @@
 | `--reset-config` | 清除 QSettings 重置窗口几何 |
 | `--no-auto-update-check` | 跳过启动时更新检查 |
 | `--work-dir` / `-w` | 工作目录 (模型缓存路径) |
-| `--platform` / `-p` | 启动 V4 平台工作台模式 |
+| `--platform` / `-p` | 启动 V4 平台工作台模式 (**默认启用**) |
+| `--no-platform` | 强制使用传统 MainWindow |
 | `--logger-level` | 日志级别: debug/info/warning/error/critical |
 
 ## 子命令
@@ -60,6 +63,15 @@
 配置键迁移: `epsilon` → `canvas.epsilon`, `show_cross_line` → `canvas.crosshair.show`。
 验证: `validate_label` (None|"exact"), `qt_allocation_limit`, `shape_color`, 重复标签。
 
+## 日志系统 (`logging_config.py`)
+
+`setup_logging()` 在 main() 中调用一次:
+- 幂等 (通过 `_xanylabeling_configured` 标志防止重复初始化)
+- 控制台: stderr, 与根级别相同
+- 文件: `~/.xanylabeling/logs/xanylabeling.log`, RotatingFileHandler (10MB × 5)
+- 格式: `%(asctime)s | %(levelname)-7s | %(name)s:%(funcName)s:%(lineno)d - %(message)s`
+- 所有模块使用 `logging.getLogger(__name__)` — 无需额外配置
+
 ## 设备检测 (`views/labeling/utils/device_manager.py`)
 
 单例 DeviceManager, 3 层优先级:
@@ -82,19 +94,19 @@
 
 | 窗口 | 类 | 创建时机 |
 |------|-----|---------|
-| MainWindow | `views/mainwindow.py` | `--platform` 未设置时 |
-| WorkbenchWindow | `views/platform/workbench_window.py` | `--platform` 设置时 |
+| WorkbenchWindow | `views/platform/workbench_window.py` | **默认** (`--platform`) |
+| MainWindow | `views/mainwindow.py` | `--no-platform` 时 |
+
+### WorkbenchWindow 生命周期 (默认)
+1. `__init__`: 创建 ProjectContext, Shell 组件, 9 个工作区页面
+2. `set_project(path)` → `ProjectContext.open()` 初始化 SQLite + 所有 Repos + Services
+3. 服务列表: AssetRepo, AnnotationRepo, RunRepo, JobRepo, ModelRepo, EvalRepo, DatasetBuildRepo, WorkflowQuery, JobService, WorkflowState
+4. 域导航通过 `WorkflowState` 自动管理: 完成训练 → 自动跳到评估
 
 ### MainWindow 生命周期
 1. `__init__`: 创建 LabelingWrapper → LabelingWidget, 设置 statusBar
 2. `showMaximized()` → `raise_()` → `app.exec()`
 3. `closeEvent()` → 委托给 `LabelingWrapper.closeEvent()`, 保存窗口几何到 QSettings
-
-### WorkbenchWindow 生命周期
-1. `__init__`: 创建 ProjectSession, Shell 组件, 9 个工作区页面
-2. `set_project(path)` → `ProjectSession.open_project()` 初始化所有服务
-3. 服务列表: AssetRepository, ImportService, TrainingService, EvaluationService, ExportService, InferenceService, DatasetBuildService, ModelRegistryService
-4. 域导航通过 `WorkflowState` 自动管理: 完成训练 → 自动跳到评估
 
 ## 关闭
 

@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
-from anylabeling.platform.domain.task import LabelClass, TaskSpec
+from anylabeling.platform.domain.task import TaskSpec
 from anylabeling.platform.infrastructure.atomic_writer import AtomicWriter
 
 # ---------------------------------------------------------------------------

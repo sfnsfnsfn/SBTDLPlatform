@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~600 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~600 | Updated: dead code cleanup -->
 
 # 依赖 (Dependencies)
 

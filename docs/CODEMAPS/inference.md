@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~900 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~900 | Updated: dead code cleanup -->
 
 # 推理 — 自动标注引擎 (Inference)
 

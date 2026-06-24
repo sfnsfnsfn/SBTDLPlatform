@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from PyQt6 import QtCore, QtWidgets
 
-from anylabeling.views.platform.i18n import tr
 from anylabeling.views.platform.style import (
     FONT_FAMILY,
     FONT_SIZE_BODY,

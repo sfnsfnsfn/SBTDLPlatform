@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from enum import Enum, IntEnum
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 from anylabeling.views.platform.i18n import tr
 from anylabeling.views.platform.style import (

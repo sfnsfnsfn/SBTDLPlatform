@@ -7,8 +7,7 @@ from anylabeling.views.labeling.vqa.config import (
     FONT_SIZE_NORMAL,
     FONT_SIZE_LARGE,
 )
-from anylabeling.views.labeling.utils.qt import new_icon_path
-from anylabeling.views.labeling.utils.theme import get_theme, get_mode
+from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.views.labeling.utils.style import get_checkbox_indicator_style
 
 

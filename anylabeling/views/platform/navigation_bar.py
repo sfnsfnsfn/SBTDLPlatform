@@ -7,7 +7,6 @@ The PipelineStep enum and step_label() helper remain in active use
 by WorkbenchWindow for its internal QStackedWidget page indexing.
 """
 
-import warnings
 from enum import IntEnum
 
 from PyQt6 import QtCore, QtWidgets

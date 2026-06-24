@@ -18,7 +18,7 @@ import json
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from anylabeling.platform.infrastructure.process_job_runner import ProcessJobRunner
 from anylabeling.platform.workers.protocol import (

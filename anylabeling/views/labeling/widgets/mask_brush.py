@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtGui
 
 logger = logging.getLogger(__name__)
 

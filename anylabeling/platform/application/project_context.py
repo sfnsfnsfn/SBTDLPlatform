@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 
 from anylabeling.platform.application.job_service import JobService
-from anylabeling.platform.application.workflow_state import DomainState, WorkflowState
+from anylabeling.platform.application.workflow_state import WorkflowState
 from anylabeling.platform.infrastructure.project_db import ProjectDb
 from anylabeling.platform.infrastructure.sqlite_repositories.annotations import SQLiteAnnotationRepository
 from anylabeling.platform.infrastructure.sqlite_repositories.assets import SQLiteAssetRepository

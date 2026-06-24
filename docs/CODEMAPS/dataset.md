@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~850 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~850 | Updated: dead code cleanup -->
 
 # 数据集 — 构建与预处理 (Dataset)
 
@@ -10,6 +10,19 @@
 | `DatasetBuild` (frozen) — split_seed, split_strategy, tile_plan, adapter_id | `platform/domain/dataset.py` |
 | `SplitManifest` (frozen) — strategy, ratios, seed, asset_assignments | `platform/domain/split_manifest.py` |
 | `PreprocessConfig` (frozen) — 16 params, estimate_tiles() | `platform/domain/preprocess_config.py` |
+| `DatasetBuildRecord` (frozen) — SQLite 持久化 | `platform/domain/records.py` |
+| `AssetRecord` (frozen) — SQLite 持久化 | `platform/domain/records.py` |
+| `AnnotationSummaryRecord` (frozen) — SQLite 持久化 | `platform/domain/records.py` |
+
+## SQLite 仓储
+
+| 仓储 | 文件 | 方法 |
+|------|------|------|
+| `SQLiteAssetRepository` | `infrastructure/sqlite_repositories/assets.py` | upsert, get, list, stats, mark_deleted |
+| `SQLiteAnnotationRepository` | `infrastructure/sqlite_repositories/annotations.py` | upsert_summary, get_by_asset, count_annotated, label_histogram |
+| `SQLiteDatasetBuildRepository` | `infrastructure/sqlite_repositories/dataset_builds.py` | create, mark_running, mark_completed, mark_failed |
+
+全部通过 `ProjectContext` 统一组装，使用 `UnitOfWork` 管理事务。
 
 ## DatasetBuildService (`platform/application/dataset_build_service.py`, 895L)
 

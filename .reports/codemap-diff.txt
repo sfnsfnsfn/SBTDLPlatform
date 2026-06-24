@@ -1,59 +1,52 @@
-Codemap Analysis Report — 2026-06-22
-======================================
+Codemap Diff Report — 2026-06-25
+=================================
 
-Status: MAJOR UPDATE (previous: 2026-06-07, ~40-50% change rate)
+Base: 2026-06-25 (523 files)
+Current: 2026-06-25 (523 files)
+Changes: Dead code cleanup (67 files modified)
 
-Files Updated (12 existing):
-  ~ docs/CODEMAPS/architecture.md   — 9-step pipeline (was 8), all steps connected
-  ~ docs/CODEMAPS/project-management.md — IMPORT+CONFIG now connected, MODELS step added
-  ~ docs/CODEMAPS/annotation.md     — COCO/VOC/YOLO codecs, auto-save, mask brush
-  ~ docs/CODEMAPS/dataset.md        — Leakage detection, build history, ManifestStore
-  ~ docs/CODEMAPS/training.md       — TrainingReadiness, TrainReadinessWidget, auto-chain
-  ~ docs/CODEMAPS/model-export.md   — ModelLibrary, ExportConfig, auto-register
-  ~ docs/CODEMAPS/inference.md      — InferenceViewerWidget added
-  ~ docs/CODEMAPS/large-image.md    — (minor updates)
-  ~ docs/CODEMAPS/task-execution.md — WorkflowState machine added
-  ~ docs/CODEMAPS/startup-and-lifecycle.md — (unchanged)
-  ~ docs/CODEMAPS/ui.md             — 9-step layout, shell components, widgets table
-  ~ docs/CODEMAPS/dependencies.md   — (unchanged)
+=== Dead Code Cleanup Summary ===
 
-Files Added (2 new):
-  + docs/CODEMAPS/import.md         — Import pipeline, AssetRepository, codecs, ImportVM
-  + docs/CODEMAPS/evaluation.md     — EvaluationService, MisclassificationService, gallery
+57 unused imports removed across 57 source files:
+  - Platform layer: 14 files (json, uuid, Counter, List, DomainState, etc.)
+  - Services layer: 11 files (QtCore, os, tkinter, warnings, etc.)
+  - Views layer: 18 files (sys, new_icon, Path, QtGui, QFont, etc.)
+  - Test files: 14 files (23 imports removed)
 
-Architecture Changes Detected:
-  - Pipeline expanded: 8 steps → 9 steps (MODELS step added at position 8)
-  - IMPORT step: placeholder → ImportWorkspace + precheck pipeline
-  - CONFIG step: placeholder → TaskConfigurator (dynamic, task-family-aware)
-  - Phase 3a-3c: Import precheck, annotation companion import, COCO/VOC/YOLO codecs
-  - Phase 3b: Auto-save, mask brush, AI suggestions
-  - Phase 3c: Tile preview, build history, ManifestStore, leakage detection
-  - Phase 4: TrainingReadiness, EvalReportWidget, MisclassGallery, ModelLibrary
-  - Phase 4: WorkflowState auto-chain (Train→Eval→Export→Models)
-  - Dead code removed: ImageImportDialog, import_preview
+Dead code removed:
+  - canvas.py: commented-out boundary checks and debug prints
+  - label_widget.py: commented-out signal connections
+  - sahi/versions.py: dead Python <3.8 compatibility branch
 
-New Dependencies Detected:
-  - None (no new packages added to pyproject.toml)
+Items preserved (intentional):
+  - Side-effect imports (Qt resource registration, adapter registry)
+  - Third-party code (visualgd, sahi, trackers)
+  - Abstract/protocol methods (pass-only)
 
-New Services:
-  + ImportService (837L) — asset import with precheck + annotation companion
-  + AssetRepository (309L) — asset query + filtering
-  + MisclassificationService (206L) — post-eval error analysis
-  + WorkflowState (463L) — cross-step state machine
+=== Codemaps Updated ===
 
-New Widgets:
-  + AssetFilterBar, AssetListModel, EvalReportWidget, MisclassGallery
-  + ModelLibrary, TilePreviewWidget, TileInspectorPanel, TrainReadinessWidget
+All 11 codemaps updated with new metadata timestamp:
+  architecture.md        — ✅ Updated
+  startup-and-lifecycle.md — ✅ Updated
+  task-execution.md      — ✅ Updated
+  dataset.md             — ✅ Updated
+  ui.md                  — ✅ Updated
+  inference.md           — ✅ Updated
+  training.md            — ✅ Updated
+  model-export.md        — ✅ Updated
+  annotation.md          — ✅ Updated
+  large-image.md         — ✅ Updated
+  dependencies.md        — ✅ Updated
 
-New View Models:
-  + DatasetViewModel, ImportViewModel, RunViewModel, TrainValidationVM
+=== Staleness ===
 
-Staleness Warnings:
-  - None — all codemaps freshly regenerated.
+All codemaps generated within 1 day. No staleness warnings.
 
-Stats:
-  - Python files: 474 → 636 (+162)
-  - Test files: ~70 → 110 (+40)
-  - Codemap files: 12 → 14 (+2)
-  - Platform pipeline steps: 8 → 9 (+1)
-  - Placeholder steps: 2 → 0 (-2)
+=== Summary ===
+
+Code cleanup operation removed 57 unused imports and minor dead code
+across 67 files. No architectural changes detected. All codemaps
+remain accurate and have been refreshed with updated timestamps.
+
+Files scanned: 523
+Codemaps total: 11 (all updated)

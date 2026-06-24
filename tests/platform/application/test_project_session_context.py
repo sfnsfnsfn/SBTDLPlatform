@@ -6,7 +6,6 @@ from pathlib import Path
 
 from anylabeling.platform.application.project_context import ProjectContext
 from anylabeling.platform.application.project_session import ProjectSession
-from anylabeling.platform.infrastructure.project_db import ProjectDb
 
 
 class TestProjectContextOpen:

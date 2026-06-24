@@ -73,7 +73,6 @@ def _smart_recommend_task(asset_count: int, group_count: int) -> str | None:
 try:
     from PyQt6 import QtCore, QtWidgets
     from PyQt6.QtCore import pyqtSignal
-    from PyQt6.QtGui import QFont
 
     from anylabeling.platform.domain.task import TaskSpec, LabelClass
     from anylabeling.platform.domain.import_config import ImportConfig

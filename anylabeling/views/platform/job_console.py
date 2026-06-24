@@ -11,7 +11,6 @@ from typing import Dict
 from PyQt6 import QtCore, QtWidgets
 
 from anylabeling.platform.application.job_service import JobService
-from anylabeling.platform.workers.protocol import JobState
 from anylabeling.views.platform.i18n import tr
 from anylabeling.views.platform.style import (
     FONT_FAMILY,

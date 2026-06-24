@@ -2075,14 +2075,7 @@ class Canvas(
             p2, p3, p4 = self.get_adjoint_points(
                 shape.direction, shape[sindex], pos, index
             )
-            # if (
-            #     self.out_off_pixmap(p2)
-            #     or self.out_off_pixmap(p3)
-            #     or self.out_off_pixmap(p4)
-            # ):
-            #     # No need to move if one pixal out of map
-            #     return
-            # Move 4 pixal one by one
+            # Move 4 pixels one by one
             shape.move_vertex_by(index, pos - point)
             lindex = (index + 1) % 4
             rindex = (index + 3) % 4
@@ -3623,9 +3616,6 @@ class Canvas(
 
     def close_enough(self, p1, p2):
         """Check if 2 points are close enough (by an threshold epsilon)"""
-        # d = distance(p1 - p2)
-        # m = (p1-p2).manhattanLength()
-        # print "d %.2f, m %d, %.2f" % (d, m, d - m)
         # divide by scale to allow more precision when zoomed in
         return utils.distance(p1 - p2) < (
             self.epsilon / self.current_view_scale()

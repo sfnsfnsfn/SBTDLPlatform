@@ -12,7 +12,6 @@ Architecture constraints:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import platform
@@ -20,7 +19,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 from anylabeling.platform.workers.protocol import (
     JobEvent,

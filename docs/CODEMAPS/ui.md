@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~950 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~950 | Updated: dead code cleanup -->
 
 # UI 层 (User Interface)
 

@@ -1,4 +1,4 @@
-<!-- Generated: 2026-06-23 | Files scanned: 504 | Token estimate: ~750 -->
+<!-- Generated: 2026-06-25 | Files scanned: 523 | Token estimate: ~850 | Updated: dead code cleanup -->
 
 # 任务执行 — 作业系统 (Task Execution)
 
@@ -26,6 +26,16 @@ jobs/{job_id}/
 └── stop.flag         ← 取消信号
 ```
 
+## SQLite 作业仓储 (`platform/infrastructure/sqlite_repositories/jobs.py`)
+
+`SQLiteJobRepository(ProjectDb)` — 实现 `JobRepositoryPort`:
+- `upsert(record: JobRecord) → JobRecord`
+- `get(job_id: str) → JobRecord | None`
+- `list(offset, limit) → list[JobRecord]`
+- `mark_started/mark_completed/mark_failed/mark_cancelled(job_id)`
+
+`JobRecord` (frozen dataclass): id, job_kind, params_json, status, exit_code, stdout_path, stderr_path, started_at, finished_at, created_at, updated_at
+
 ## 关键类型
 
 | 类型 | 字段 | 说明 |
@@ -33,6 +43,7 @@ jobs/{job_id}/
 | `JobRequest` (dataclass) | job_kind, params, job_id (自动生成) | 作业创建请求 |
 | `JobEvent` (dataclass) | seq, type, payload, timestamp | 事件类型: started/progress/metric/artifact/completed/failed/log |
 | `CancellationToken` (dataclass) | flag_path → `stop.flag` | `is_cancelled` 每次访问重新检查; `cancel()` 创建 stop.flag |
+| `JobRecord` (frozen) | id, job_kind, status, exit_code, timestamps | SQLite 持久化记录 |
 
 ### 协议辅助函数
 
@@ -79,15 +90,16 @@ cancel(job_id)
 
 **注意:** QThreadPool **未在代码库任何位置使用**。每次调用创建临时线程。
 
-## 训练事件协议
+## 日志系统 (`logging_config.py`)
 
-```
-父进程读取子进程 stdout 逐行解析:
-__XANYLABELING_TRAIN_EVENT__={"event": "training_log", "data": {...}}
-```
+`setup_logging(level, log_dir, app_name, max_bytes, backup_count)`:
+- 幂等初始化 (防止重复配置)
+- stderr handler (控制台)
+- RotatingFileHandler (10MB × 5 轮转)
+- 日志路径: `~/.xanylabeling/logs/xanylabeling.log`
+- 格式: `%(asctime)s | %(levelname)-7s | %(name)s:%(funcName)s:%(lineno)d - %(message)s`
 
-`TrainingManager` 使用回调模式 (`notify_callbacks`)，非 pyqtSignal。
-`TrainingEventRedirector(QObject)` 已定义但未使用。
+所有模块使用 `logging.getLogger(__name__)` 获取 logger。
 
 ## WorkflowState (`platform/application/workflow_state.py`, 463L)
 
@@ -117,6 +129,8 @@ __XANYLABELING_TRAIN_EVENT__={"event": "training_log", "data": {...}}
 | JobRequest/JobEvent/CancellationToken | ✅ |
 | ProcessJobRunner (子进程) | ✅ |
 | JobService (CRUD, 等待, 取消) | ✅ |
+| SQLite JobRepository | ✅ |
+| 集中式日志 (RotatingFileHandler) | ✅ |
 | JobConsole UI | ✅ |
 | TaskCenterDrawer | ✅ |
 | 训练事件协议 | ✅ |

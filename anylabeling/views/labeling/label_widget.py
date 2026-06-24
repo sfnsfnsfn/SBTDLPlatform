@@ -2293,10 +2293,6 @@ class LabelingWidget(LabelDialog):
         self.next_files_changed.connect(
             self.auto_labeling_widget.model_manager.on_next_files_changed
         )
-        # NOTE(jack): this is not needed for now
-        # self.auto_labeling_widget.model_manager.request_next_files_requested.connect(
-        #     lambda: self.inform_next_files(self.filename)
-        # )
         self.auto_labeling_widget.hide()  # Hide by default
         central_layout.addWidget(self.label_instruction)
         central_layout.addSpacing(5)

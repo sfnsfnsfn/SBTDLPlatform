@@ -1,5 +1,4 @@
 from difflib import SequenceMatcher
-from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QLabel,

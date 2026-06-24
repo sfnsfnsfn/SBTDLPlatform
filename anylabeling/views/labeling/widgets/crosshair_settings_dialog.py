@@ -1,6 +1,5 @@
 from PyQt6 import QtWidgets, QtCore
 
-from anylabeling.views.labeling.utils.qt import new_icon_path
 from anylabeling.views.labeling.utils.style import (
     get_dialog_style,
     get_ok_btn_style,

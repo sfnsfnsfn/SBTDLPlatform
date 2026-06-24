@@ -14,9 +14,6 @@ import logging
 from PyQt6 import QtCore, QtWidgets
 
 from anylabeling.platform.application.job_service import JobService
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from anylabeling.platform.infrastructure.sqlite_repositories.jobs import SQLiteJobRepository
 from anylabeling.views.labeling.utils.theme import get_theme
 from anylabeling.views.platform.i18n import tr
 from anylabeling.views.platform.style import (
