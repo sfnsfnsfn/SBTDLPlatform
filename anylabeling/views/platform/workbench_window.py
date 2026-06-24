@@ -242,6 +242,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # --- Initialize services via ProjectSession BEFORE UI updates ---
         self._session.open_project(project_path)
         self._job_service = self._session.job_service
+        self._context = self._session.context  # ProjectContext (Phase E/F1)
         self._asset_repository = AssetRepository(project_path)
 
         self._navigation.set_project_open(True)
@@ -262,11 +263,16 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         self._job_console.set_job_service(self._job_service)
         self._task_center_drawer.set_job_service(self._job_service)
 
-        training_service = TrainingService(self._job_service, project_path)
+        training_service = TrainingService(
+            self._job_service, project_path,
+            context=self._context,
+        )
         export_service = ExportService(self._job_service, project_path)
         evaluation_service = EvaluationService(self._job_service, project_path)
         inference_service = InferenceService(self._job_service, project_path)
-        self._dataset_build_service = DatasetBuildService(project_path)
+        self._dataset_build_service = DatasetBuildService(
+            project_path, context=self._context,
+        )
 
         # --- Load project data ---
         task_specs = self._load_task_specs(project_path)
@@ -277,7 +283,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         # --- Import Workspace (embedded import page) ---
         self._import_workspace = ImportWorkspace(
-            ImportService(project_path)
+            ImportService(project_path, context=self._context)
         )
         self._import_workspace.import_completed.connect(
             self._on_import_completed
@@ -288,6 +294,8 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         # --- Data Workspace (simplified data overview) ---
         self._data_workspace = DataWorkspace()
+        if self._context is not None:
+            self._data_workspace.set_context(self._context)
         asset_paths = self._asset_repository.scan_assets()  # Phase 3a: unified via AssetRepository
         self._data_workspace.set_assets(asset_paths)
         self._data_workspace.import_requested.connect(
