@@ -1,0 +1,109 @@
+{
+  "phase": "phase-f2",
+  "name": "F2: UI 接入 DB + 1920x1080 坐标",
+  "agent": "F",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-f1"],
+  "blocks": [],
+  "parallel": false,
+  "summary": "全部 Workspace 通过 ProjectContext 获取 DB 数据 + UI 控件适配 1920x1080",
+  "workspaceFiles": {
+    "data_workspace.py": {"lines": 373, "target": "refresh_stats() 改为 DB 查询"},
+    "preprocess_workspace.py": {"lines": 964, "target": "BuildHistory 来自 DB, 调整坐标"},
+    "train_workspace.py": {"lines": 1247, "target": "DatasetSelector 只列 completed builds, 坐标调整"},
+    "evaluate_workspace.py": {"lines": 506, "target": "RunSelector 只列 completed runs, 坐标调整"},
+    "export_workspace.py": {"lines": 559, "target": "ModelSelector 只列 ready models, 坐标调整"}
+  },
+  "uiLayoutConstants": {
+    "window": "1920x1080",
+    "appBar": {"h": 56},
+    "primaryNav": {"expanded": 216, "folded": 64},
+    "pageHeader": {"h": 64},
+    "subNav": {"h": 48},
+    "statusBar": {"h": 28},
+    "taskDrawer": {"w": 480},
+    "contentMargin": 24,
+    "cardGap": 16
+  },
+  "tasks": [
+    {
+      "id": "F2-1",
+      "title": "DataWorkspace 读取 DB stats",
+      "priority": "P1",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/data_workspace.py",
+          "tests/views/platform/test_data_workspace_db_stats.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 set_context 后显示 assets/annotated/builds 统计测试",
+        "实现 refresh_stats() 通过 context 查询 DB",
+        "UI 控件按 1920x1080 坐标调整",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_data_workspace_db_stats.py -q"
+    },
+    {
+      "id": "F2-2",
+      "title": "PreprocessWorkspace 读取/写入 dataset_builds",
+      "priority": "P1",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/preprocess_workspace.py",
+          "tests/views/platform/test_preprocess_workspace_db_history.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 completed build 显示在 Build History 测试",
+        "先写 failed build 显示错误但不允许训练测试",
+        "调整 1920x1080 坐标",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_preprocess_workspace_db_history.py -q"
+    },
+    {
+      "id": "F2-3",
+      "title": "TrainWorkspace 只列 completed dataset_builds",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/train_workspace.py",
+          "tests/views/platform/test_train_workspace_dataset_selector.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 failed/running build 不进入 selector 测试",
+        "先写没有 completed build 时 Start 禁用 + tooltip 测试",
+        "将参数控件统一为 QSpinBox/QDoubleSpinBox/QComboBox",
+        "调整 1920x1080 坐标",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_train_workspace_dataset_selector.py -q"
+    },
+    {
+      "id": "F2-4",
+      "title": "Evaluate/Export 页面只使用 completed run / ready model",
+      "priority": "P1",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/evaluate_workspace.py",
+          "anylabeling/views/platform/export_workspace.py",
+          "tests/views/platform/test_evaluate_export_db_selectors.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 Evaluate 只列 completed run 测试",
+        "先写 Export 只列 ready model 测试",
+        "调整 UI 坐标",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_evaluate_export_db_selectors.py -q"
+    }
+  ]
+}

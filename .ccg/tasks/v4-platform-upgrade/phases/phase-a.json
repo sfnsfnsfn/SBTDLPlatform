@@ -1,0 +1,101 @@
+{
+  "phase": "phase-a",
+  "name": "A: 安全网与 Bug 修复",
+  "agent": "A",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": [],
+  "blocks": ["phase-b", "phase-c"],
+  "parallel": false,
+  "summary": "修复 4 个已知 P0/P1 bug，建立基础测试安全网",
+  "tasks": [
+    {
+      "id": "A0-1",
+      "title": "修复 WorkbenchWindow 预处理页 exts 未定义",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/workbench_window.py",
+          "tests/views/platform/test_workbench_preprocess_wiring.py"
+        ],
+        "forbid": [
+          "anylabeling/platform/infrastructure/*",
+          "anylabeling/platform/application/project_session.py"
+        ]
+      },
+      "tddSteps": [
+        "先写 test_create_preprocess_workspace_does_not_raise_when_assets_exist",
+        "先写 test_create_preprocess_workspace_sets_total_assets_from_repository",
+        "运行 pytest 确认失败",
+        "实现最小修复：优先调用 AssetRepository.count_assets()",
+        "运行 pytest 确认通过",
+        "调用 python-reviewer",
+        "调用 code-reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_workbench_preprocess_wiring.py -q && python -m compileall anylabeling/views/platform/workbench_window.py"
+    },
+    {
+      "id": "A0-2",
+      "title": "修复 _create_train_workspace() 不保存引用",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/workbench_window.py",
+          "tests/views/platform/test_workbench_train_wiring.py"
+        ],
+        "forbid": [
+          "anylabeling/platform/infrastructure/*"
+        ]
+      },
+      "tddSteps": [
+        "先写测试：创建训练页后 hasattr(window, '_train_workspace') 为 True",
+        "先写测试：预处理构建完成后会调用 refresh_dataset_builds()",
+        "实现最小代码：self._train_workspace = workspace",
+        "调用 python-reviewer + code-reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_workbench_train_wiring.py -q"
+    },
+    {
+      "id": "A0-3",
+      "title": "修复 AssetRepository 分组扫描不递归",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/application/asset_repository.py",
+          "tests/platform/application/test_asset_repository.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 assets/group_a/a.png 与 assets/group_b/b.png 的扫描测试",
+        "确认旧实现失败",
+        "将 _get_all_paths() 从 iterdir() 改为 rglob('*')",
+        "将 group_name 定义为 assets 根目录下一级目录",
+        "补充无分组图片 assets/c.png 的测试",
+        "调用 python-reviewer + code-reviewer"
+      ],
+      "acceptance": "pytest tests/platform/application/test_asset_repository.py -q"
+    },
+    {
+      "id": "A0-4",
+      "title": "关闭未实现增强配置写入",
+      "priority": "P1",
+      "writeScope": {
+        "allow": [
+          "anylabeling/views/platform/preprocess_workspace.py",
+          "tests/views/platform/test_preprocess_workspace_config.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写测试：disabled augmentation 不进入 build config",
+        "确认旧实现失败",
+        "将默认增强 checkbox 全部 unchecked + disabled",
+        "_get_current_config() 返回 augmentations=[]",
+        "tooltip 写清'当前版本不会影响数据集构建'",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/views/platform/test_preprocess_workspace_config.py -q"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "phase": "phase-b",
+  "name": "B: DB 基础设施",
+  "agent": "B",
+  "priority": "P0",
+  "status": "pending",
+  "dependsOn": ["phase-a"],
+  "blocks": ["phase-d"],
+  "parallel": true,
+  "parallelGroup": "group-1",
+  "summary": "建立 SQLite 连接管理、迁移执行器、事务边界",
+  "tasks": [
+    {
+      "id": "B1-1",
+      "title": "实现 ProjectDb",
+      "priority": "P0",
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/project_db.py",
+          "tests/platform/infrastructure/test_project_db.py"
+        ],
+        "forbid": [
+          "anylabeling/views/platform/workbench_window.py",
+          "anylabeling/platform/application/project_session.py"
+        ]
+      },
+      "tddSteps": [
+        "先写 open/close/execute/query_one/query_all/transaction/checkpoint 测试",
+        "确认 import 失败或功能失败",
+        "实现 ProjectDb 最小版本：sqlite3.connect + WAL + foreign_keys + row_factory",
+        "补 foreign_keys、WAL、busy_timeout 测试",
+        "调用 python-reviewer + code-reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_project_db.py -q",
+      "keyDesign": {
+        "dbPath": "{project_root}/project.sqlite",
+        "pragmas": "foreign_keys=ON, journal_mode=WAL, synchronous=NORMAL, busy_timeout=5000, temp_store=MEMORY",
+        "rowFactory": "sqlite3.Row",
+        "isolationLevel": null
+      }
+    },
+    {
+      "id": "B1-2",
+      "title": "实现 MigrationRunner 与 0001_init.sql",
+      "priority": "P0",
+      "dependsOn": ["B1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/migration_runner.py",
+          "anylabeling/platform/infrastructure/migrations/0001_init.sql",
+          "tests/platform/infrastructure/test_migration_runner.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 migrate() 幂等测试（执行两次不重复不报错）",
+        "先写 schema_migrations 记录测试",
+        "实现 MigrationRunner：读 migrations/ 目录，按版本号排序执行",
+        "执行两次 migrate，确认幂等",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_migration_runner.py -q"
+    },
+    {
+      "id": "B1-3",
+      "title": "实现 UnitOfWork",
+      "priority": "P1",
+      "dependsOn": ["B1-1"],
+      "writeScope": {
+        "allow": [
+          "anylabeling/platform/infrastructure/unit_of_work.py",
+          "tests/platform/infrastructure/test_unit_of_work.py"
+        ],
+        "forbid": []
+      },
+      "tddSteps": [
+        "先写 commit/rollback/nested transaction 禁止测试",
+        "实现 UnitOfWork context manager",
+        "调用 reviewer"
+      ],
+      "acceptance": "pytest tests/platform/infrastructure/test_unit_of_work.py -q"
+    }
+  ]
+}
