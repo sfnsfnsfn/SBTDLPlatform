@@ -5,6 +5,7 @@ from typing import Callable, Dict
 
 import termcolor
 
+# @deprecated — 已由 anylabeling.logging_config 全局配置替代
 COLORS: Dict[str, str] = {
     "WARNING": "yellow",
     "INFO": "white",
@@ -26,6 +27,7 @@ def singleton(cls):
     return get_instance
 
 
+# @deprecated — 已由 anylabeling.logging_config 全局配置替代
 class ColoredFormatter(logging.Formatter):
     def __init__(self, fmt: str, use_color: bool = True):
         super().__init__(fmt)
@@ -59,16 +61,13 @@ class ColoredFormatter(logging.Formatter):
 class AppLogger:
     def __init__(self, name="X-AnyLabeling"):
         self.logger = logging.getLogger(name)
-        self.logger.propagate = False
+        # 允许日志传播到根 logger，由全局配置统一处理
+        self.logger.propagate = True
         self._setup_handler()
 
     def _setup_handler(self):
-        stream_handler = logging.StreamHandler(sys.stderr)
-        handler_format = ColoredFormatter(
-            "%(asctime)s | %(levelname2)s | %(module2)s:%(funcName2)s:%(lineno2)s - %(message2)s"
-        )
-        stream_handler.setFormatter(handler_format)
-        self.logger.addHandler(stream_handler)
+        # 不再添加独立 handler，使用全局日志配置（anylabeling.logging_config）
+        pass
 
     def __getattr__(self, name: str) -> Callable:
         return getattr(self.logger, name)

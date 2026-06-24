@@ -302,7 +302,12 @@ def main():
     no_auto_update_check = config_from_args.pop("no_auto_update_check", False)
     qt_platform = config_from_args.pop("qt_platform", None)
 
-    logger.setLevel(getattr(logging, logger_level.upper()))
+    # 初始化全局日志（控制台 + 文件轮转）
+    from pathlib import Path
+    from anylabeling.logging_config import setup_logging
+
+    log_level = getattr(logging, logger_level.upper())
+    setup_logging(level=log_level, log_dir=Path(get_work_directory()) / "logs")
     logger.info(
         f"🚀 {gradient_text(f'X-AnyLabeling v{__version__} launched!')}"
     )
