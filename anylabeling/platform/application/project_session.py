@@ -16,6 +16,7 @@ import logging
 from pathlib import Path
 
 from anylabeling.platform.application.job_service import JobService
+from anylabeling.platform.application.project_context import ProjectContext
 from anylabeling.platform.application.workflow_state import (
     DomainState,
     WorkflowState,
@@ -38,6 +39,7 @@ class ProjectSession:
 
     def __init__(self) -> None:
         self._project_root: Path | None = None
+        self._context: ProjectContext | None = None
         self._job_service: JobService | None = None
         self._workflow_state: WorkflowState | None = None
 
@@ -49,6 +51,11 @@ class ProjectSession:
     def project_root(self) -> Path | None:
         """The current project root path, or None if no project open."""
         return self._project_root
+
+    @property
+    def context(self) -> ProjectContext | None:
+        """The current ProjectContext, or None if no project open."""
+        return self._context
 
     @property
     def job_service(self) -> JobService | None:
@@ -104,9 +111,10 @@ class ProjectSession:
 
         self._project_root = path
 
-        jobs_root = path / "jobs"
-        self._job_service = JobService(jobs_root)
-        self._workflow_state = WorkflowState(path)
+        self._context = ProjectContext(path)
+        self._context.open()
+        self._job_service = self._context.job_service
+        self._workflow_state = self._context.workflow_state
 
         logger.info("Project opened: %s", path)
 
@@ -124,6 +132,9 @@ class ProjectSession:
 
         logger.info("Closing project: %s", self._project_root)
 
+        if self._context is not None:
+            self._context.close()
+        self._context = None
         self._workflow_state = None
         self._job_service = None
         self._project_root = None

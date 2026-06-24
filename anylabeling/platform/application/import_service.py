@@ -29,6 +29,7 @@ from anylabeling.platform.domain.import_config import (
     PrecheckResult,
     get_supported_extensions,
 )
+from anylabeling.platform.application.project_context import ProjectContext
 from anylabeling.platform.infrastructure.checksum import compute_sha256
 from anylabeling.platform.infrastructure.image_reader import ImageReader
 
@@ -53,8 +54,13 @@ class ImportService:
               f"{result.duplicate_count} duplicates")
     """
 
-    def __init__(self, project_root: str | Path) -> None:
+    def __init__(
+        self,
+        project_root: str | Path,
+        context: ProjectContext | None = None,
+    ) -> None:
         self._project_root = Path(project_root)
+        self._context = context
 
     # ------------------------------------------------------------------
     # Public API
@@ -188,6 +194,27 @@ class ImportService:
                 group_id=gid,
                 sha256=sha,
             )
+            # Persist to SQLite via ProjectContext (if available)
+            if self._context is not None:
+                from anylabeling.platform.domain.records import AssetRecord
+
+                record = AssetRecord(
+                    id=asset.id,
+                    rel_path=rel,
+                    width=width,
+                    height=height,
+                    sha256=sha,
+                    channels=channels,
+                    ext=Path(rel).suffix,
+                    size_bytes=dest.stat().st_size,
+                    group_name=gid,
+                    is_large=is_large,
+                    status="active",
+                    source_kind="import",
+                    source_version=None,
+                )
+                self._context.assets.upsert(record)
+
             assets.append(asset)
             processed_count += 1
 

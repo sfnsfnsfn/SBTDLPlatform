@@ -26,6 +26,12 @@ from anylabeling.platform.domain.run import MetricPoint, Run
 from anylabeling.platform.infrastructure.atomic_writer import AtomicWriter
 from anylabeling.platform.workers.protocol import JobRequest
 
+# Lazy import for ProjectContext (the infrastructure modules it depends on may
+# not be installed in the package yet).  The import is deferred to the methods
+# that use it, so importing training_service does not trigger loading of
+# ProjectContext's dependencies.
+_ProjectContext: Any = None
+
 
 
 
@@ -118,9 +124,22 @@ class TrainingService:
         self,
         job_service: JobService,
         project_root: str | Path,
+        context: Any | None = None,
     ) -> None:
+        """Initialize TrainingService.
+
+        Args:
+            job_service: The JobService for subprocess management.
+            project_root: Filesystem path to the project root.
+            context: Optional ProjectContext for SQLite DB mirroring.
+                When provided, training operations are mirrored to the
+                project database (RunRecord, ModelRecord).
+                When ``None`` (default), the service operates in
+                backward-compatible file-only mode.
+        """
         self._job_service = job_service
         self._project_root = Path(project_root)
+        self._context = context
 
     # ------------------------------------------------------------------
     # adapter id
@@ -238,6 +257,29 @@ class TrainingService:
 
         run.status = "completed"
         self.update_run_record(run)
+
+        # DB mirror: mark run completed and upsert a ready model record
+        if self._context is not None:
+            from anylabeling.platform.domain.records import ModelRecord
+
+            self._context.runs.mark_completed(run.id)
+            best_path: str | None = None
+            if run_parser is not None:
+                try:
+                    best_path = run_parser.get_best_weight_path(output_dir)
+                except Exception:
+                    pass
+            model_record = ModelRecord(
+                id=f"model_{run.id}",
+                run_id=run.id,
+                name=f"train_{run.id}",
+                format="pt" if best_path and str(best_path).endswith(".pt") else "onnx",
+                path=str(best_path) if best_path else "",
+                task_family=run.task_family,
+                ready=True,
+            )
+            self._context.models.upsert(model_record)
+
         return run
 
     # ------------------------------------------------------------------
@@ -252,11 +294,13 @@ class TrainingService:
         """Start training via :class:`JobService` subprocess.
 
         1. Creates a Run record (or reuses an existing one).
-        2. Resolves the algorithm provider from the registry.
-        3. Gets the data.yaml path from the provider's dataset adapter.
-        4. Builds training kwargs via the provider's train adapter.
-        5. Constructs the worker command via the provider's train adapter.
-        6. Creates the job via ``JobService.create_job()``.
+        2. If *context* is set, validates the dataset build exists
+           and is completed, then mirrors the RunRecord to SQLite.
+        3. Resolves the algorithm provider from the registry.
+        4. Gets the data.yaml path from the provider's dataset adapter.
+        5. Builds training kwargs via the provider's train adapter.
+        6. Constructs the worker command via the provider's train adapter.
+        7. Creates the job via ``JobService.create_job()``.
 
         Args:
             request: The training request with all hyperparameters.
@@ -265,53 +309,89 @@ class TrainingService:
 
         Returns:
             The job_id string for tracking.
+
+        Raises:
+            ValueError: If the dataset build is not found or not completed.
         """
-        # 1. Create Run record
+        # 1. Create Run record (run.json on disk)
         run = self.create_run_record(request)
+
+        # 2. DB mirror: validate build state and create RunRecord in SQLite
+        if self._context is not None:
+            from anylabeling.platform.domain.records import RunRecord
+            build = self._context.dataset_builds.get(
+                request.dataset_build.id
+            )
+            if build is None:
+                raise ValueError(
+                    f"Dataset build '{request.dataset_build.id}' not found."
+                )
+            if build.status != "completed":
+                raise ValueError(
+                    f"Dataset build '{request.dataset_build.id}' is "
+                    f"not completed (status={build.status})."
+                )
+            run_record = RunRecord(
+                id=run.id,
+                dataset_build_id=run.dataset_build_id,
+                adapter_id=run.adapter_id,
+                task_family=run.task_family,
+                status="running",
+                config_json=json.dumps(run.config),
+            )
+            self._context.runs.create(run_record)
 
         # Resolve adapter_id
         if adapter_id is None:
             adapter_id = self._get_adapter_id(request.task_spec.family)
 
-        # 2. Get provider
-        provider = self._get_provider(adapter_id)
-        if not provider.supports_training:
-            raise ValueError(
-                f"Algorithm '{adapter_id}' does not support training."
+        try:
+            # 3. Get provider
+            provider = self._get_provider(adapter_id)
+            if not provider.supports_training:
+                raise ValueError(
+                    f"Algorithm '{adapter_id}' does not support training."
+                )
+
+            # 4. Get data.yaml path
+            dataset_adapter = provider.dataset_adapter
+            if dataset_adapter is None:
+                raise ValueError(
+                    f"Algorithm '{adapter_id}' has no dataset adapter."
+                )
+            data_yaml = dataset_adapter.get_data_path(request.dataset_build)
+
+            # 5. Build train kwargs
+            train_adapter = provider.train_adapter
+            if train_adapter is None:
+                raise ValueError(
+                    f"Algorithm '{adapter_id}' has no train adapter."
+                )
+            train_kwargs = train_adapter.build_train_kwargs(
+                request, data_yaml, str(Path(run.output_dir))
             )
 
-        # 3. Get data.yaml path
-        dataset_adapter = provider.dataset_adapter
-        if dataset_adapter is None:
-            raise ValueError(
-                f"Algorithm '{adapter_id}' has no dataset adapter."
+            # 6. Build worker command
+            command = train_adapter.get_train_command(
+                request.base_model, train_kwargs
             )
-        data_yaml = dataset_adapter.get_data_path(request.dataset_build)
 
-        # 4. Build train kwargs
-        train_adapter = provider.train_adapter
-        if train_adapter is None:
-            raise ValueError(
-                f"Algorithm '{adapter_id}' has no train adapter."
+            # 7. Create and start job
+            job_request = JobRequest(
+                job_kind="training",
+                params={
+                    "run_id": run.id,
+                    "train_kwargs": train_kwargs,
+                },
             )
-        train_kwargs = train_adapter.build_train_kwargs(
-            request, data_yaml, str(Path(run.output_dir))
-        )
-
-        # 5. Build worker command
-        command = train_adapter.get_train_command(
-            request.base_model, train_kwargs
-        )
-
-        # 6. Create and start job
-        job_request = JobRequest(
-            job_kind="training",
-            params={
-                "run_id": run.id,
-                "train_kwargs": train_kwargs,
-            },
-        )
-        return self._job_service.create_job(job_request, command)
+            return self._job_service.create_job(job_request, command)
+        except Exception:
+            if self._context is not None:
+                self._context.runs.mark_failed(
+                    run.id,
+                    error_message="Failed to start training",
+                )
+            raise
 
     # ------------------------------------------------------------------
     # validate_training_readiness

@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from anylabeling.platform.infrastructure.process_job_runner import ProcessJobRunner
 from anylabeling.platform.workers.protocol import (
@@ -26,6 +26,10 @@ from anylabeling.platform.workers.protocol import (
     JobState,
     TERMINAL_STATES,
 )
+
+# Lazy forward reference for ProjectContext (infrastructure deps may not be
+# installed in the package yet).
+_ProjectContext: Any = None
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +51,25 @@ class JobService:
         events = service.get_job_events(job_id)
     """
 
-    def __init__(self, jobs_root: str | Path) -> None:
+    def __init__(
+        self,
+        jobs_root: str | Path,
+        context: Any | None = None,
+    ) -> None:
+        """Initialize JobService.
+
+        Args:
+            jobs_root: Filesystem path for job directories.
+            context: Optional ProjectContext for SQLite DB mirroring.
+                When provided, job lifecycle events are mirrored to the
+                project database (JobRecord).
+                When ``None`` (default), the service operates in
+                backward-compatible file-only mode.
+        """
         self._runner = ProcessJobRunner(jobs_root)
         self._jobs: Dict[str, JobRequest] = {}
         self._lock = threading.Lock()
+        self._context = context
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -85,7 +104,63 @@ class JobService:
                 raise
             self._jobs[request.job_id] = request
             logger.info("Job %s (%s) started", request.job_id, request.job_kind)
+
+            # DB mirror: create a JobRecord in SQLite
+            if self._context is not None:
+                from anylabeling.platform.domain.records import JobRecord
+                record = JobRecord(
+                    id=request.job_id,
+                    kind=request.job_kind,
+                    state="running",
+                    progress=0.0,
+                    payload_json=(
+                        str(request.params)
+                        if request.params
+                        else None
+                    ),
+                )
+                self._context.jobs.create(record)
+
             return request.job_id
+
+    # ------------------------------------------------------------------
+    # DB mirror helpers
+    # ------------------------------------------------------------------
+
+    def update_job_progress(self, job_id: str, progress: float) -> None:
+        """Update the progress of *job_id* in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+
+        Args:
+            job_id: The job identifier.
+            progress: A float between 0.0 and 1.0.
+        """
+        if self._context is not None:
+            self._context.jobs.update_progress(job_id, progress)
+
+    def mark_job_completed(self, job_id: str) -> None:
+        """Mark *job_id* as completed in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+        """
+        if self._context is not None:
+            self._context.jobs.mark_completed(job_id)
+
+    def mark_job_failed(self, job_id: str, error_message: str) -> None:
+        """Mark *job_id* as failed in the SQLite database.
+
+        This is a no-op when *context* was not provided at construction
+        time.
+
+        Args:
+            job_id: The job identifier.
+            error_message: A human-readable error description.
+        """
+        if self._context is not None:
+            self._context.jobs.mark_failed(job_id, error_message)
 
     def cancel_job(self, job_id: str) -> None:
         """Cancel a running job.
