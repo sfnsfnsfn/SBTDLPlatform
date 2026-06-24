@@ -110,7 +110,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle(tr("视觉算法平台", "Vision Algorithm Platform"))
         self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
-        self.resize(1400, 900)
+        self.resize(1920, 1080)
 
         self._central = QtWidgets.QWidget()
         self.setCentralWidget(self._central)
@@ -262,6 +262,10 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # Wire-up JobService to dependent widgets
         self._job_console.set_job_service(self._job_service)
         self._task_center_drawer.set_job_service(self._job_service)
+        if self._context is not None:
+            self._task_center_drawer.set_job_repository(
+                self._context.jobs
+            )
 
         training_service = TrainingService(
             self._job_service, project_path,
