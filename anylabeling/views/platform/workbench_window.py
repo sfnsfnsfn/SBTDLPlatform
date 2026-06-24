@@ -262,7 +262,7 @@ class WorkbenchWindow(QtWidgets.QMainWindow):
         # Wire-up JobService to dependent widgets
         self._job_console.set_job_service(self._job_service)
         self._task_center_drawer.set_job_service(self._job_service)
-        if self._context is not None:
+        if self._context is not None and hasattr(self._task_center_drawer, 'set_job_repository'):
             self._task_center_drawer.set_job_repository(
                 self._context.jobs
             )

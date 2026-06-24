@@ -117,6 +117,7 @@ class TaskCenterDrawer(QtWidgets.QWidget):
         super().__init__(parent)
 
         self._job_service: JobService | None = None
+        self._job_repository = None
         self._active_filter: str = "all"
         self._jobs: list[dict] = []
         self._known_states: dict[str, str] = {}
@@ -144,6 +145,9 @@ class TaskCenterDrawer(QtWidgets.QWidget):
             self._known_states.clear()
             self._hidden_job_ids.clear()
             self._render_task_list()
+
+    def set_job_repository(self, repo) -> None:
+        self._job_repository = repo
 
     def toggle(self) -> None:
         """Show or hide the drawer."""
